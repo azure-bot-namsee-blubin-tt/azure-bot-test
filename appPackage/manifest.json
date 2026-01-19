@@ -1,0 +1,67 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.19/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.19",
+  "version": "1.0.0",
+  "id": "f55d4729-77ce-4e81-a7b0-a584585a1380",
+  "developer": {
+    "name": "Team Namsee",
+    "websiteUrl": "https://www.example.com",
+    "privacyUrl": "https://www.example.com/privacy",
+    "termsOfUseUrl": "https://www.example.com/terms"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "name": {
+    "short": "Simple Bot",
+    "full": "Simple Azure Bot with Calculator"
+  },
+  "description": {
+    "short": "A simple bot with calculator functionality",
+    "full": "An interactive bot that provides a menu-driven interface with calculator capabilities, help system, and more."
+  },
+  "accentColor": "#FFFFFF",
+  "bots": [
+    {
+      "botId": "f55d4729-77ce-4e81-a7b0-a584585a1380",
+      "scopes": [
+        "personal",
+        "team",
+        "groupChat"
+      ],
+      "supportsFiles": false,
+      "isNotificationOnly": false,
+      "commandLists": [
+        {
+          "scopes": [
+            "personal",
+            "team",
+            "groupChat"
+          ],
+          "commands": [
+            {
+              "title": "menu",
+              "description": "Show the main menu with all available options"
+            },
+            {
+              "title": "calc",
+              "description": "Start calculator mode for math calculations"
+            },
+            {
+              "title": "help",
+              "description": "Get help and see available commands"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ],
+  "validDomains": [
+    "bot-api.namsee04.xyz"
+  ]
+}
