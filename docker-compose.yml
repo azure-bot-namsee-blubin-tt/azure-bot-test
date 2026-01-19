@@ -9,10 +9,6 @@ services:
     restart: unless-stopped
     ports:
       - "3978:3978"
-    environment:
-      - MicrosoftAppId=${MICROSOFT_APP_ID}
-      - MicrosoftAppPassword=${MICROSOFT_APP_PASSWORD}
-      - BOT_ENDPOINT=${BOT_ENDPOINT:-https://bot-api.namsee04.xyz}
     env_file:
       - .env
     healthcheck:
