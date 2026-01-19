@@ -1,0 +1,23 @@
+{
+  "name": "azure-bot",
+  "version": "1.0.0",
+  "description": "Simple bot for Azure Bot Service integration",
+  "main": "src/index.mjs",
+  "scripts": {
+    "start": "node src/index.mjs",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@microsoft/agents-hosting-express": "^1.2.2"
+  },
+  "devDependencies": {
+    "@microsoft/teams-app-test-tool": "^0.2.20"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
