@@ -22,8 +22,13 @@ export function createServer(bot) {
     tenantId: config.bot.tenantId ? config.bot.tenantId.slice(0, 8) + '...' : 'NOT SET',
   })
 
-  // Let SDK auto-configure from env vars (handles single/multi tenant automatically)
+  // Load auth config from env, then override authority for single-tenant
   const authConfig = loadAuthConfigFromEnv()
+
+  // Fix: For single-tenant, authority must include tenantId
+  if (authConfig.tenantId) {
+    authConfig.authority = `https://login.microsoftonline.com/${authConfig.tenantId}`
+  }
 
   console.log('Auth config result:', {
     clientId: authConfig.clientId ? authConfig.clientId.slice(0, 8) + '...' : 'NOT SET',
