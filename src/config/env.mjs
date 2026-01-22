@@ -21,8 +21,8 @@ export const config = {
   },
 
   bot: {
-    appId: process.env.MicrosoftAppId,
-    appPassword: process.env.MicrosoftAppPassword,
+    clientId: process.env.MicrosoftAppId,
+    clientSecret: process.env.MicrosoftAppPassword,
     tenantId: process.env.MicrosoftAppTenantId,
     appType: process.env.MicrosoftAppType || 'SingleTenant',
   },
