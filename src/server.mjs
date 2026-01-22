@@ -3,7 +3,7 @@
  * Configures and starts the HTTP server for the bot
  */
 import express from 'express'
-import { CloudAdapter, loadAuthConfigFromEnv } from '@microsoft/agents-hosting'
+import { CloudAdapter, loadAuthConfigFromEnv, getAuthConfigWithDefaults } from '@microsoft/agents-hosting'
 import { config } from './config/env.mjs'
 
 /**
@@ -15,35 +15,33 @@ export function createServer(bot) {
   const app = express()
   app.use(express.json())
 
-  // Debug: Log credentials being used
-  console.log('Bot config from env:', {
-    clientId: config.bot.clientId ? config.bot.clientId.slice(0, 8) + '...' : 'NOT SET',
-    clientSecret: config.bot.clientSecret ? 'SET (' + config.bot.clientSecret.length + ' chars)' : 'NOT SET',
-    tenantId: config.bot.tenantId ? config.bot.tenantId.slice(0, 8) + '...' : 'NOT SET',
-  })
+  const isLocalDev = process.env.LOCAL_DEV === 'true'
 
-  // Load auth config from env, then override authority for single-tenant
-  const authConfig = loadAuthConfigFromEnv()
+  let authConfig
 
-  // Fix: For single-tenant, authority must include tenantId
-  if (authConfig.tenantId) {
-    authConfig.authority = `https://login.microsoftonline.com/${authConfig.tenantId}`
-    // Add issuers for Bot Framework channels
-    authConfig.issuers = [
-      ...(authConfig.issuers || []),
-      `https://sts.windows.net/${authConfig.tenantId}/`,
-      `https://login.microsoftonline.com/${authConfig.tenantId}/v2.0`,
-      'https://api.botframework.com',
-      'https://sts.windows.net/d6d49420-f39b-4df7-a1dc-d59a935871db/', // Bot Framework tenant
-    ]
+  if (isLocalDev) {
+    authConfig = getAuthConfigWithDefaults({})
+  } else {
+    authConfig = loadAuthConfigFromEnv()
+
+    if (authConfig.tenantId) {
+      authConfig.authority = `https://login.microsoftonline.com/${authConfig.tenantId}`
+      authConfig.issuers = [
+        ...(authConfig.issuers || []),
+        `https://sts.windows.net/${authConfig.tenantId}/`,
+        `https://login.microsoftonline.com/${authConfig.tenantId}/v2.0`,
+        'https://api.botframework.com',
+        'https://sts.windows.net/d6d49420-f39b-4df7-a1dc-d59a935871db/',
+      ]
+    }
+
+    console.log('Auth config result:', {
+      clientId: authConfig.clientId ? authConfig.clientId.slice(0, 8) + '...' : 'NOT SET',
+      tenantId: authConfig.tenantId || 'NOT SET (multi-tenant)',
+      hasSecret: !!authConfig.clientSecret,
+      authority: authConfig.authority || 'default',
+    })
   }
-
-  console.log('Auth config result:', {
-    clientId: authConfig.clientId ? authConfig.clientId.slice(0, 8) + '...' : 'NOT SET',
-    tenantId: authConfig.tenantId || 'NOT SET (multi-tenant)',
-    hasSecret: !!authConfig.clientSecret,
-    authority: authConfig.authority || 'default',
-  })
 
   const adapter = new CloudAdapter(authConfig)
 
@@ -66,7 +64,6 @@ export function createServer(bot) {
     }
   })
 
-  // Test endpoint WITHOUT auth
   app.post('/test', async (req, res) => {
     console.log('Test request body:', req.body)
     console.log('Content-Type:', req.get('Content-Type'))
@@ -98,7 +95,6 @@ export function createServer(bot) {
     }
   })
 
-  // Health check
   app.get('/health', (req, res) => {
     res.json({
       status: 'ok',

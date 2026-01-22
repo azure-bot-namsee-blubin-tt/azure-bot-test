@@ -1,15 +1,13 @@
 /**
  * Application Entry Point
- * Uses @microsoft/agents-hosting-express for automatic auth handling
+ * Uses custom server for flexible auth (supports local dev without auth)
  */
-import { startServer } from '@microsoft/agents-hosting-express'
 import { JiraBot } from './bot/JiraBot.mjs'
 import { validateConfig } from './config/env.mjs'
+import { createServer, startServer } from './server.mjs'
 
 validateConfig()
 
 const bot = new JiraBot()
-
-// Use startServer from @microsoft/agents-hosting-express
-// It handles authentication automatically
-startServer(bot)
+const app = createServer(bot)
+startServer(app)

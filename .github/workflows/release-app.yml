@@ -1,0 +1,106 @@
+name: Release App Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.2)'
+        required: false
+
+env:
+  APP_PACKAGE_DIR: appPackage
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Get version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"
+          else
+            VERSION=$(jq -r '.version' ${{ env.APP_PACKAGE_DIR }}/manifest.json)
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Update manifest version
+        run: |
+          jq '.version = "${{ steps.version.outputs.version }}"' \
+            ${{ env.APP_PACKAGE_DIR }}/manifest.json > tmp.json
+          mv tmp.json ${{ env.APP_PACKAGE_DIR }}/manifest.json
+          cat ${{ env.APP_PACKAGE_DIR }}/manifest.json
+
+      - name: Create app package zip
+        run: |
+          cd ${{ env.APP_PACKAGE_DIR }}
+          zip -r ../appPackage.zip manifest.json color.png outline.png
+          cd ..
+          ls -la appPackage.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: teams-app-package
+          path: appPackage.zip
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: appPackage.zip
+          name: Release ${{ steps.version.outputs.version }}
+          body: |
+            ## Teams App Package v${{ steps.version.outputs.version }}
+
+            ### Installation
+            1. Download `appPackage.zip`
+            2. Go to Teams Admin Center > Teams apps > Manage apps
+            3. Click "Upload new app" and select the zip file
+
+            Or for personal use:
+            1. Open Teams > Apps > Manage your apps
+            2. Click "Upload an app" > "Upload a custom app"
+            3. Select `appPackage.zip`
+
+      # Upload to Teams using Graph API
+      # - name: Upload to Teams (Graph API)
+      #   if: true
+      #   env:
+      #     AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      #     AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      #     AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      #   run: |
+      #     # Get access token
+      #     TOKEN=$(curl -s -X POST \
+      #       "https://login.microsoftonline.com/$AZURE_TENANT_ID/oauth2/v2.0/token" \
+      #       -H "Content-Type: application/x-www-form-urlencoded" \
+      #       -d "client_id=$AZURE_CLIENT_ID" \
+      #       -d "client_secret=$AZURE_CLIENT_SECRET" \
+      #       -d "scope=https://graph.microsoft.com/.default" \
+      #       -d "grant_type=client_credentials" | jq -r '.access_token')
+
+      #     # Upload app package to Teams catalog
+      #     curl -X POST \
+      #       "https://graph.microsoft.com/v1.0/appCatalogs/teamsApps" \
+      #       -H "Authorization: Bearer $TOKEN" \
+      #       -H "Content-Type: application/zip" \
+      #       --data-binary @appPackage.zip
