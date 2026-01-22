@@ -28,6 +28,14 @@ export function createServer(bot) {
   // Fix: For single-tenant, authority must include tenantId
   if (authConfig.tenantId) {
     authConfig.authority = `https://login.microsoftonline.com/${authConfig.tenantId}`
+    // Add issuers for Bot Framework channels
+    authConfig.issuers = [
+      ...(authConfig.issuers || []),
+      `https://sts.windows.net/${authConfig.tenantId}/`,
+      `https://login.microsoftonline.com/${authConfig.tenantId}/v2.0`,
+      'https://api.botframework.com',
+      'https://sts.windows.net/d6d49420-f39b-4df7-a1dc-d59a935871db/', // Bot Framework tenant
+    ]
   }
 
   console.log('Auth config result:', {
