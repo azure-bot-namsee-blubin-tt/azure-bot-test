@@ -26,6 +26,7 @@ export function createServer(bot) {
     clientId: config.bot.clientId,
     clientSecret: config.bot.clientSecret,
     tenantId: config.bot.tenantId,
+    authority: `https://login.microsoftonline.com/${config.bot.tenantId}`,
   })
 
   console.log('Auth config result:', {
