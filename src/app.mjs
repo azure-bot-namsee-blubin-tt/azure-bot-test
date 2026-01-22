@@ -1,14 +1,15 @@
 /**
  * Application Entry Point
- * Initializes and starts the Teams bot application
+ * Uses @microsoft/agents-hosting-express for automatic auth handling
  */
+import { startServer } from '@microsoft/agents-hosting-express'
 import { JiraBot } from './bot/JiraBot.mjs'
-import { createServer, startServer } from './server.mjs'
 import { validateConfig } from './config/env.mjs'
 
 validateConfig()
 
 const bot = new JiraBot()
 
-const app = createServer(bot)
-startServer(app)
+// Use startServer from @microsoft/agents-hosting-express
+// It handles authentication automatically
+startServer(bot)
