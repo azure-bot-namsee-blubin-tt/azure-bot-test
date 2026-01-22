@@ -3,7 +3,7 @@
  * Configures and starts the HTTP server for the bot
  */
 import express from 'express'
-import { CloudAdapter, getAuthConfigWithDefaults } from '@microsoft/agents-hosting'
+import { CloudAdapter, loadAuthConfigFromEnv } from '@microsoft/agents-hosting'
 import { config } from './config/env.mjs'
 
 /**
@@ -22,17 +22,27 @@ export function createServer(bot) {
     tenantId: config.bot.tenantId ? config.bot.tenantId.slice(0, 8) + '...' : 'NOT SET',
   })
 
-  const authConfig = getAuthConfigWithDefaults({
-    clientId: config.bot.clientId,
-    clientSecret: config.bot.clientSecret,
-    tenantId: config.bot.tenantId,
-    authority: `https://login.microsoftonline.com/${config.bot.tenantId}`,
-  })
+  // Load auth config from env, then override authority for single-tenant
+  const authConfig = loadAuthConfigFromEnv()
+
+  // Fix: For single-tenant, authority must include tenantId
+  if (authConfig.tenantId) {
+    authConfig.authority = `https://login.microsoftonline.com/${authConfig.tenantId}`
+    // Add issuers for Bot Framework channels
+    authConfig.issuers = [
+      ...(authConfig.issuers || []),
+      `https://sts.windows.net/${authConfig.tenantId}/`,
+      `https://login.microsoftonline.com/${authConfig.tenantId}/v2.0`,
+      'https://api.botframework.com',
+      'https://sts.windows.net/d6d49420-f39b-4df7-a1dc-d59a935871db/', // Bot Framework tenant
+    ]
+  }
 
   console.log('Auth config result:', {
     clientId: authConfig.clientId ? authConfig.clientId.slice(0, 8) + '...' : 'NOT SET',
-    tenantId: authConfig.tenantId ? authConfig.tenantId.slice(0, 8) + '...' : 'NOT SET',
+    tenantId: authConfig.tenantId || 'NOT SET (multi-tenant)',
     hasSecret: !!authConfig.clientSecret,
+    authority: authConfig.authority || 'default',
   })
 
   const adapter = new CloudAdapter(authConfig)
@@ -44,11 +54,14 @@ export function createServer(bot) {
 
   app.post('/api/messages', async (req, res) => {
     console.log('Received message:', req.body.text || req.body.type)
+    console.log('ServiceUrl:', req.body.serviceUrl)
+    console.log('ChannelId:', req.body.channelId)
 
     try {
       await adapter.process(req, res, (context) => bot.run(context))
     } catch (error) {
       console.error('Error processing message:', error)
+      console.error('Error details:', JSON.stringify(error, null, 2))
       res.status(500).json({ error: error.message })
     }
   })

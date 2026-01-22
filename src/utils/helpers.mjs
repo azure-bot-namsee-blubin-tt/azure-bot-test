@@ -101,6 +101,111 @@ export function escapeHtml(text) {
 }
 
 /**
+ * Strip HTML tags and convert to plain text for Telegram
+ * Removes all HTML formatting and converts to clean plain text
+ * @param {string} html - HTML text
+ * @returns {string} Plain text
+ */
+export function stripHtml(html) {
+  if (!html) return ''
+  return html
+    // Convert <br> to newlines
+    .replace(/<br\s*\/?>/gi, '\n')
+    // Convert block elements to newlines
+    .replace(/<\/(p|div|h[1-6])>/gi, '\n')
+    // Remove all HTML tags (including style, span with attributes, links, etc.)
+    .replace(/<[^>]+>/g, '')
+    // Decode HTML entities
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    // Clean up excessive whitespace
+    .replace(/\n\n\n+/g, '\n\n')
+    .replace(/[ \t]+/g, ' ')
+    .trim()
+}
+
+/**
+ * Convert HTML/Markdown message to Telegram-safe plain text
+ * Strips all formatting that could cause Telegram parsing errors
+ * @param {string} message - Message with HTML or Markdown
+ * @returns {string} Plain text safe for Telegram
+ */
+export function toTelegramText(message) {
+  if (!message) return ''
+
+  let text = message
+
+  // Convert Markdown links [text](url) to "text: url"
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1: $2')
+
+  // Convert HTML links <a href="url">text</a> to "text: url"
+  text = text.replace(/<a[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>/gi, '$2: $1')
+
+  // Strip HTML
+  text = stripHtml(text)
+
+  // Remove Markdown bold/italic
+  text = text.replace(/\*\*([^*]+)\*\*/g, '$1')
+  text = text.replace(/\*([^*]+)\*/g, '$1')
+  text = text.replace(/__([^_]+)__/g, '$1')
+  text = text.replace(/_([^_]+)_/g, '$1')
+
+  // Remove Markdown code
+  text = text.replace(/`([^`]+)`/g, '$1')
+
+  return text
+}
+
+/**
+ * Create a context wrapper that automatically formats messages for the channel
+ * @param {object} context - Bot context
+ * @returns {object} Wrapped context with channel-aware sendActivity
+ */
+export function wrapContextForChannel(context) {
+  const channelId = context.activity?.channelId
+  const isTelegram = channelId === 'telegram'
+
+  // If not Telegram, return original context
+  if (!isTelegram) {
+    return context
+  }
+
+  // Create a proxy that intercepts sendActivity
+  return {
+    ...context,
+    activity: context.activity,
+    sendActivity: async (activityOrText) => {
+      let text
+      if (typeof activityOrText === 'string') {
+        text = toTelegramText(activityOrText)
+      } else if (activityOrText.text) {
+        text = toTelegramText(activityOrText.text)
+        activityOrText = { ...activityOrText, text }
+      } else {
+        // Non-text activity (like typing), pass through
+        return context.sendActivity(activityOrText)
+      }
+      return context.sendActivity(text)
+    }
+  }
+}
+
+/**
+ * Send activity with channel-appropriate formatting
+ * @param {object} context - Bot context
+ * @param {string} message - Message (can contain HTML)
+ */
+export async function sendMessage(context, message) {
+  const channelId = context.activity?.channelId
+  const text = channelId === 'telegram' ? stripHtml(message) : message
+  await context.sendActivity(text)
+}
+
+/**
  * Truncate text to max length with ellipsis
  * @param {string} text - Text to truncate
  * @param {number} maxLength - Maximum length
