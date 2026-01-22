@@ -28,7 +28,6 @@ export function createServer(bot) {
     clientId: config.bot.clientId,
     clientSecret: config.bot.clientSecret,
     tenantId: tenantId,
-    // For single-tenant bots, specify valid token issuers
     issuers: [
       `https://sts.windows.net/${tenantId}/`,
       `https://login.microsoftonline.com/${tenantId}/v2.0`,
