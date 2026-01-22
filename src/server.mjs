@@ -15,7 +15,12 @@ export function createServer(bot) {
   const app = express()
   app.use(express.json())
 
-  const authConfig = getAuthConfigWithDefaults()
+  const authConfig = getAuthConfigWithDefaults({
+    clientId: config.bot.clientId,
+    clientSecret: config.bot.clientSecret,
+    tenantId: config.bot.tenantId,
+  })
+  
   const adapter = new CloudAdapter(authConfig)
 
   adapter.onTurnError = async (context, error) => {
