@@ -15,4 +15,4 @@ COPY src/ ./src/
 EXPOSE 3978
 
 # Start the bot
-CMD ["node", "src/index.mjs"]
+CMD ["node", "src/app.mjs"]
