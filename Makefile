@@ -16,7 +16,10 @@ dev:
 	./node_modules/.bin/teamsapptester
 
 build-package:
-	@echo "Building appPackage.zip..."
+	@echo "Building appPackage.zip for Microsoft Teams..."
+	@echo "Copying icons from assets/icons..."
+	@cp assets/icons/jira-icon.png appPackage/jira-icon.png
+	@cp assets/icons/outline.png appPackage/outline.png
 	@cd appPackage && zip -r ../appPackage.zip manifest.json color.png outline.png
 	@echo "Created appPackage.zip"
 	@ls -la appPackage.zip
