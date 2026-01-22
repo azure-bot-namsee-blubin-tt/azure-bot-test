@@ -3,7 +3,7 @@
  * Configures and starts the HTTP server for the bot
  */
 import express from 'express'
-import { CloudAdapter, getAuthConfigWithDefaults } from '@microsoft/agents-hosting'
+import { CloudAdapter, loadAuthConfigFromEnv } from '@microsoft/agents-hosting'
 import { config } from './config/env.mjs'
 
 /**
@@ -22,25 +22,14 @@ export function createServer(bot) {
     tenantId: config.bot.tenantId ? config.bot.tenantId.slice(0, 8) + '...' : 'NOT SET',
   })
 
-  const tenantId = config.bot.tenantId
-
-  const authConfig = getAuthConfigWithDefaults({
-    clientId: config.bot.clientId,
-    clientSecret: config.bot.clientSecret,
-    tenantId: tenantId,
-    authority: `https://login.microsoftonline.com/${tenantId}`,
-    scope: 'https://api.botframework.com/.default',
-    issuers: [
-      `https://sts.windows.net/${tenantId}/`,
-      `https://login.microsoftonline.com/${tenantId}/v2.0`,
-      'https://api.botframework.com',
-    ],
-  })
+  // Let SDK auto-configure from env vars (handles single/multi tenant automatically)
+  const authConfig = loadAuthConfigFromEnv()
 
   console.log('Auth config result:', {
     clientId: authConfig.clientId ? authConfig.clientId.slice(0, 8) + '...' : 'NOT SET',
-    tenantId: authConfig.tenantId ? authConfig.tenantId.slice(0, 8) + '...' : 'NOT SET',
+    tenantId: authConfig.tenantId || 'NOT SET (multi-tenant)',
     hasSecret: !!authConfig.clientSecret,
+    authority: authConfig.authority || 'default',
   })
 
   const adapter = new CloudAdapter(authConfig)
@@ -52,11 +41,14 @@ export function createServer(bot) {
 
   app.post('/api/messages', async (req, res) => {
     console.log('Received message:', req.body.text || req.body.type)
+    console.log('ServiceUrl:', req.body.serviceUrl)
+    console.log('ChannelId:', req.body.channelId)
 
     try {
       await adapter.process(req, res, (context) => bot.run(context))
     } catch (error) {
       console.error('Error processing message:', error)
+      console.error('Error details:', JSON.stringify(error, null, 2))
       res.status(500).json({ error: error.message })
     }
   })
