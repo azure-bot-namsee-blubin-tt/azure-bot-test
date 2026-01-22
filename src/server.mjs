@@ -15,12 +15,25 @@ export function createServer(bot) {
   const app = express()
   app.use(express.json())
 
+  // Debug: Log credentials being used
+  console.log('Bot config from env:', {
+    clientId: config.bot.clientId ? config.bot.clientId.slice(0, 8) + '...' : 'NOT SET',
+    clientSecret: config.bot.clientSecret ? 'SET (' + config.bot.clientSecret.length + ' chars)' : 'NOT SET',
+    tenantId: config.bot.tenantId ? config.bot.tenantId.slice(0, 8) + '...' : 'NOT SET',
+  })
+
   const authConfig = getAuthConfigWithDefaults({
     clientId: config.bot.clientId,
     clientSecret: config.bot.clientSecret,
     tenantId: config.bot.tenantId,
   })
-  
+
+  console.log('Auth config result:', {
+    clientId: authConfig.clientId ? authConfig.clientId.slice(0, 8) + '...' : 'NOT SET',
+    tenantId: authConfig.tenantId ? authConfig.tenantId.slice(0, 8) + '...' : 'NOT SET',
+    hasSecret: !!authConfig.clientSecret,
+  })
+
   const adapter = new CloudAdapter(authConfig)
 
   adapter.onTurnError = async (context, error) => {
