@@ -2,9 +2,9 @@ version: '3.8'
 
 services:
   azure-bot:
-    image: namsee04/azure-bot:latest
-    # Or build locally:
-    # build: .
+    # image: namsee04/azure-bot:latest
+    # Build locally to use latest code:
+    build: .
     container_name: azure-bot
     restart: unless-stopped
     ports:
