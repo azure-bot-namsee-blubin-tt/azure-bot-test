@@ -36,6 +36,12 @@ export function createServer(bot) {
 
   // Test endpoint WITHOUT auth
   app.post('/test', async (req, res) => {
+    console.log('Test request body:', req.body)
+    console.log('Content-Type:', req.get('Content-Type'))
+
+    if (!req.body || !req.body.text) {
+      return res.status(400).json({ error: 'Missing body or text field. Send: {"text": "your message", "type": "message"}' })
+    }
 
     const mockResponses = []
     const mockContext = {
