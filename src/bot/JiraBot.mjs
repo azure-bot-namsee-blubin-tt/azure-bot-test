@@ -41,19 +41,38 @@ export class JiraBot extends AgentApplication {
   }
 
   _welcome = async context => {
-    const welcomeMessage =
-      'Welcome! I can help you with Jira tickets and ITSM requests.<br/><br/>' +
-      '<h2>JIRA</h2>' +
-      '<code>jira create</code> - Create a new Jira ticket<br/>' +
-      '<code>jira my tickets</code> - View your assigned tickets<br/>' +
-      '<code>jira search &lt;query&gt;</code> - Search for tickets<br/>' +
-      '<code>jira view &lt;TICKET-123&gt;</code> - View ticket details<br/><br/>' +
-      '<h2>ITSM</h2>' +
-      '<code>itsm create</code> - Create a new ITSM request<br/>' +
-      '<code>itsm forms</code> - Show available form templates<br/>' +
-      '<code>itsm debug</code> - Debug fields info<br/><br/>' +
-      '<code>help</code> - Show this help message<br/><br/>' +
-      'Type <code>jira create</code> or <code>itsm create</code> to get started!'
+    const channelId = context.activity.channelId
+
+    // Use plain text for Telegram, HTML for Teams
+    const welcomeMessage = channelId === 'telegram'
+      ? `Welcome! I can help you with Jira tickets and ITSM requests.
+
+JIRA
+- jira create - Create a new Jira ticket
+- jira my tickets - View your assigned tickets
+- jira search <query> - Search for tickets
+- jira view <TICKET-123> - View ticket details
+
+ITSM
+- itsm create - Create a new ITSM request
+- itsm forms - Show available form templates
+- itsm debug - Debug fields info
+
+- help - Show this help message
+
+Type "jira create" or "itsm create" to get started!`
+      : 'Welcome! I can help you with Jira tickets and ITSM requests.<br/><br/>' +
+        '<b>JIRA</b><br/>' +
+        '<code>jira create</code> - Create a new Jira ticket<br/>' +
+        '<code>jira my tickets</code> - View your assigned tickets<br/>' +
+        '<code>jira search &lt;query&gt;</code> - Search for tickets<br/>' +
+        '<code>jira view &lt;TICKET-123&gt;</code> - View ticket details<br/><br/>' +
+        '<b>ITSM</b><br/>' +
+        '<code>itsm create</code> - Create a new ITSM request<br/>' +
+        '<code>itsm forms</code> - Show available form templates<br/>' +
+        '<code>itsm debug</code> - Debug fields info<br/><br/>' +
+        '<code>help</code> - Show this help message<br/><br/>' +
+        'Type <code>jira create</code> or <code>itsm create</code> to get started!'
 
     await context.sendActivity(welcomeMessage)
   }
@@ -147,7 +166,7 @@ export class JiraBot extends AgentApplication {
     }
 
     await context.sendActivity(
-      `I didn't understand that. Type \`help\` to see available commands.\n\n💡 **Quick tip:** Type \`jira: Your ticket title\` to quickly create a ticket!`
+      `I didn't understand that. Type "help" to see available commands.\n\nQuick tip: Type "jira: Your ticket title" to quickly create a ticket!`
     )
   }
 
