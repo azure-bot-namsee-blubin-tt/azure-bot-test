@@ -28,6 +28,8 @@ export function createServer(bot) {
     clientId: config.bot.clientId,
     clientSecret: config.bot.clientSecret,
     tenantId: tenantId,
+    authority: `https://login.microsoftonline.com/${tenantId}`,
+    scope: 'https://api.botframework.com/.default',
     issuers: [
       `https://sts.windows.net/${tenantId}/`,
       `https://login.microsoftonline.com/${tenantId}/v2.0`,
