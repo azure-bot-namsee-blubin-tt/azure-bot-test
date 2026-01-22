@@ -36,7 +36,7 @@ export function createServer(bot) {
 
   // Test endpoint WITHOUT auth
   app.post('/test', async (req, res) => {
-    console.log('Test message received:', req.body.text)
+    console.log('Test message received:', req.body?.text)
 
     const mockResponses = []
     const mockContext = {
