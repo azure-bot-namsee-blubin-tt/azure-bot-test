@@ -50,8 +50,8 @@ export class JiraBot extends AgentApplication {
 JIRA
 - jira create - Create a new Jira ticket
 - jira my tickets - View your assigned tickets
-- jira search <query> - Search for tickets
-- jira view <TICKET-123> - View ticket details
+- jira search [query] - Search for tickets
+- jira view [TICKET-123] - View ticket details
 
 ITSM
 - itsm create - Create a new ITSM request
