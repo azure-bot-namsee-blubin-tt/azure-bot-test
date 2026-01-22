@@ -22,10 +22,18 @@ export function createServer(bot) {
     tenantId: config.bot.tenantId ? config.bot.tenantId.slice(0, 8) + '...' : 'NOT SET',
   })
 
+  const tenantId = config.bot.tenantId
+
   const authConfig = getAuthConfigWithDefaults({
     clientId: config.bot.clientId,
     clientSecret: config.bot.clientSecret,
-    tenantId: config.bot.tenantId,
+    tenantId: tenantId,
+    // For single-tenant bots, specify valid token issuers
+    issuers: [
+      `https://sts.windows.net/${tenantId}/`,
+      `https://login.microsoftonline.com/${tenantId}/v2.0`,
+      'https://api.botframework.com',
+    ],
   })
 
   console.log('Auth config result:', {
