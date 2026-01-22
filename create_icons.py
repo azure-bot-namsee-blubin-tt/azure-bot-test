@@ -5,7 +5,6 @@ color_img = Image.new('RGB', (192, 192), color='#0078D4')
 draw_color = ImageDraw.Draw(color_img)
 
 draw_color.rectangle([60, 60, 132, 132], outline='white', width=3)
-# Draw calculator buttons
 for i in range(3):
     for j in range(3):
         x = 70 + i * 20
