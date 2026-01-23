@@ -58,6 +58,6 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           passphrase: ${{ secrets.SSH_PASSPHRASE }}
           script: |
-            cd /azure-bot
+            cd azure-bot/
             docker compose pull
             docker compose up -d
