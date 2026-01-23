@@ -15,20 +15,7 @@ export function createServer(bot) {
   const app = express()
   app.use(express.json())
 
-  const authConfig = loadAuthConfigFromEnv()
-
-  if (authConfig.tenantId) {
-    authConfig.authority = `https://login.microsoftonline.com/${authConfig.tenantId}`
-    authConfig.issuers = [
-      ...(authConfig.issuers || []),
-      `https://sts.windows.net/${authConfig.tenantId}/`,
-      `https://login.microsoftonline.com/${authConfig.tenantId}/v2.0`,
-      'https://api.botframework.com',
-      'https://sts.windows.net/d6d49420-f39b-4df7-a1dc-d59a935871db/',
-    ]
-  }
-
-  const adapter = new CloudAdapter(authConfig)
+  const adapter = new CloudAdapter(loadAuthConfigFromEnv())
 
   adapter.onTurnError = async (context, error) => {
     console.error('Bot error:', error)
