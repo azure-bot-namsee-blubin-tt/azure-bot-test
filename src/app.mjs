@@ -1,7 +1,4 @@
-<<<<<<< Updated upstream
 // DEV
-=======
->>>>>>> Stashed changes
 // /**
 //  * Application Entry Point
 //  * Uses @microsoft/agents-hosting-express for automatic auth handling
