@@ -110,7 +110,7 @@ export class JiraBot extends AgentApplication {
   }
 
   async _routeCommand(context, text, conversationId) {
-    const lowerText = text.togaLowerCase()
+    const lowerText = text.toLowerCase()
 
     if (lowerText === 'help' || lowerText === 'hi' || lowerText === 'hello') {
       await this._welcome(context)
@@ -131,7 +131,7 @@ export class JiraBot extends AgentApplication {
     if (lowerText === 'jira my tickets' || lowerText === 'my tickets') {
       await this.jiraHandlers.showMyTickets(context)
       return
-    }
+    }``
 
     if (lowerText.startsWith('jira search ')) {
       const query = text.substring(12).trim()
