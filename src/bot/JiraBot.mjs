@@ -3,6 +3,8 @@
  * Handles message routing and command processing
  */
 import { AgentApplication } from '@microsoft/agents-hosting'
+import { MessageFactory } from 'botbuilder'
+import { ActionTypes } from 'botframework-schema'
 import { createJiraServiceFromEnv } from '../services/jira.service.mjs'
 import { createITSMServiceFromEnv } from '../services/itsm.service.mjs'
 import { getState, deleteState } from '../state/conversation.mjs'
@@ -45,22 +47,55 @@ export class JiraBot extends AgentApplication {
     // Wrap context for channel-specific formatting (handles Telegram vs Teams)
     const wrappedContext = wrapContextForChannel(context)
 
-    // Use HTML format - wrapper will convert to plain text for Telegram
-    const welcomeMessage =
-      'Welcome! I can help you with Jira tickets and ITSM requests.<br/><br/>' +
-      '<b>JIRA</b><br/>' +
-      '<code>jira create</code> - Create a new Jira ticket<br/>' +
-      '<code>jira my tickets</code> - View your assigned tickets<br/>' +
-      '<code>jira search &lt;query&gt;</code> - Search for tickets<br/>' +
-      '<code>jira view &lt;TICKET-123&gt;</code> - View ticket details<br/><br/>' +
-      '<b>ITSM</b><br/>' +
-      '<code>itsm create</code> - Create a new ITSM request<br/>' +
-      '<code>itsm forms</code> - Show available form templates<br/>' +
-      '<code>itsm debug</code> - Debug fields info<br/><br/>' +
-      '<code>help</code> - Show this help message<br/><br/>' +
-      'Type <code>jira create</code> or <code>itsm create</code> to get started!'
+    // Send welcome message
+    const welcomeText = [
+      '👋 **Welcome!**',
+      '',
+      'I can help you with **JIRA** tickets and **ITSM** requests.',
+      '',
+      '**JIRA:** `jira create`, `jira my tickets`, `jira search <query>`, `jira view <KEY>`',
+      '',
+      '**ITSM:** `itsm create`, `itsm forms`, `itsm debug`',
+      '',
+      'Select an option below or type a command:'
+    ].join('\n')
 
-    await wrappedContext.sendActivity(welcomeMessage)
+    await wrappedContext.sendActivity(welcomeText)
+
+    // Send suggested actions (buttons)
+    await this._sendSuggestedActions(wrappedContext)
+  }
+
+  /**
+   * Send suggested actions (buttons) to the user
+   * @param {object} context - Bot context
+   */
+  async _sendSuggestedActions(context) {
+    const cardActions = [
+      {
+        type: ActionTypes.PostBack,
+        title: '📝 Jira Create',
+        value: 'jira create'
+      },
+      {
+        type: ActionTypes.PostBack,
+        title: '📋 My Tickets',
+        value: 'jira my tickets'
+      },
+      {
+        type: ActionTypes.PostBack,
+        title: '📝 ITSM Create',
+        value: 'itsm create'
+      },
+      {
+        type: ActionTypes.PostBack,
+        title: '📄 ITSM Forms',
+        value: 'itsm forms'
+      }
+    ]
+
+    const reply = MessageFactory.suggestedActions(cardActions)
+    await context.sendActivity(reply)
   }
 
   _handleMessage = async context => {
