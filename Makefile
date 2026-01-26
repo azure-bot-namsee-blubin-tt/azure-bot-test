@@ -6,7 +6,7 @@ help:
 	@echo "Development:"
 	@echo "  make dev
 	@echo "Build & Release:"
-	@echo "  make build-package          - Create appPackage.zip for Microsoft Teams"
+	@echo "  make build-package          - Create jira-bot.zip for Microsoft Teams"
 
 dev:
 	@echo "Starting bot server in background..."
@@ -16,10 +16,8 @@ dev:
 	./node_modules/.bin/teamsapptester
 
 build-package:
-	@echo "Building appPackage.zip for Microsoft Teams..."
-	@echo "Copying icons from assets/icons..."
-	@cp assets/icons/jira-icon.png appPackage/jira-icon.png
-	@cp assets/icons/outline.png appPackage/outline.png
-	@cd appPackage && zip -r ../appPackage.zip manifest.json color.png outline.png
-	@echo "Created appPackage.zip"
-	@ls -la appPackage.zip
+	@echo "Building jira-bot.zip for Microsoft Teams..."
+	@rm -f jira-bot.zip
+	@cd appPackage && zip -r ../jira-bot.zip manifest.json icon.png outline.png
+	@echo "Created jira-bot.zip"
+	@ls -la jira-bot.zip

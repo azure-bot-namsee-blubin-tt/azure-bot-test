@@ -62,15 +62,15 @@ export class JiraService {
 
   /**
    * Search issues using JQL
+   * Uses the new /search/jql endpoint (migrated from deprecated /search)
    * @param {string} jql - JQL query
    * @param {number} [maxResults=10]
    */
   async searchIssues(jql, maxResults = 10) {
-    const params = new URLSearchParams({
+    return this.client.post('/search/jql', {
       jql,
-      maxResults: maxResults.toString(),
+      maxResults,
     })
-    return this.client.get(`/search?${params}`)
   }
 
   /**

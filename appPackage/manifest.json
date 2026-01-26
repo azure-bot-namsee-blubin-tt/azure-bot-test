@@ -4,17 +4,17 @@
   "version": "1.0.2",
   "id": "f55d4729-77ce-4e81-a7b0-a584585a1380",
   "developer": {
-    "name": "Team Namsee",
+    "name": "Team Namsee-BLuBin-TT",
     "websiteUrl": "https://www.example.com",
     "privacyUrl": "https://www.example.com/privacy",
     "termsOfUseUrl": "https://www.example.com/terms"
   },
   "icons": {
-    "color": "jira-icon.png",
-    "outline": "jira-icon.png"
+    "color": "icon.png",
+    "outline": "outline.png"
   },
   "name": {
-    "short": "Jira Bot",
+    "short": "Chat Bot Automation",
     "full": "Teams Bot with Jira & ITSM Integration"
   },
   "description": {
