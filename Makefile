@@ -9,8 +9,8 @@ help:
 	@echo "  make build-package          - Create jira-bot.zip for Microsoft Teams"
 
 dev:
-	@echo "Starting bot server in background..."
-	@LOCAL_DEV=true node src/app.mjs &
+	@echo "Starting bot server with auto-reload in background..."
+	@LOCAL_DEV=true ./node_modules/.bin/nodemon src/app.mjs &
 	@sleep 2
 	@echo "Starting Teams App Test Tool..."
 	./node_modules/.bin/teamsapptester
