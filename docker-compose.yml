@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   azure-bot:
-    # image: namsee04/azure-bot:latest
+    image: ghcr.io/azure-bot-namsee-blubin-tt/azure-bot-test:${TAG:-latest}
     # Build locally to use latest code:
     build: .
     container_name: azure-bot
