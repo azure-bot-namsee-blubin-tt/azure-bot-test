@@ -15,23 +15,23 @@ export function createServer(bot) {
   const app = express()
   app.use(express.json())
 
-  // const adapter = new CloudAdapter(loadAuthConfigFromEnv())
+  const adapter = new CloudAdapter(loadAuthConfigFromEnv())
 
-  const isLocalDev = process.env.LOCAL_DEV === 'true'
+  // const isLocalDev = process.env.LOCAL_DEV === 'true'
 
-  let adapter
+  // let adapter
 
-  if (isLocalDev) {
-    adapter = new CloudAdapter({
-      MicrosoftAppId: '',
-      MicrosoftAppPassword: '',
-      MicrosoftAppType: 'MultiTenant'
-    })
-    console.log('Running in LOCAL_DEV mode - authentication disabled')
-  } else {
-    const authConfig = loadAuthConfigFromEnv()
-    adapter = new CloudAdapter(authConfig)
-  }
+  // if (isLocalDev) {
+  //   adapter = new CloudAdapter({
+  //     MicrosoftAppId: '',
+  //     MicrosoftAppPassword: '',
+  //     MicrosoftAppType: 'MultiTenant'
+  //   })
+  //   console.log('Running in LOCAL_DEV mode - authentication disabled')
+  // } else {
+  //   const authConfig = loadAuthConfigFromEnv()
+  //   adapter = new CloudAdapter(authConfig)
+  // }
 
   adapter.onTurnError = async (context, error) => {
     console.error('Bot error:', error)
