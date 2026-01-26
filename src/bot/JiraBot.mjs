@@ -46,41 +46,40 @@ export class JiraBot extends AgentApplication {
     const wrappedContext = wrapContextForChannel(context)
 
     // Use HTML format - wrapper will convert to plain text for Telegram
-    // const welcomeMessage =
-    //   'Welcome! I can help you with Jira tickets and ITSM requests.<br/><br/>' +
-    //   '<b>JIRA</b><br/>' +
-    //   '<code>jira create</code> - Create a new Jira ticket<br/>' +
-    //   '<code>jira my tickets</code> - View your assigned tickets<br/>' +
-    //   '<code>jira search &lt;query&gt;</code> - Search for tickets<br/>' +
-    //   '<code>jira view &lt;TICKET-123&gt;</code> - View ticket details<br/><br/>' +
-    //   '<b>ITSM</b><br/>' +
-    //   '<code>itsm create</code> - Create a new ITSM request<br/>' +
-    //   '<code>itsm forms</code> - Show available form templates<br/>' +
-    //   '<code>itsm debug</code> - Debug fields info<br/><br/>' +
-    //   '<code>help</code> - Show this help message<br/><br/>' +
-    //   'Type <code>jira create</code> or <code>itsm create</code> to get started!'
-
     const welcomeMessage = [
-      "**👋 Welcome!**",
+      "<div style='font-family: sans-serif;'>",
+      "  <h2 style='margin-bottom: 5px;'>👋 Welcome!</h2>",
+      "  <p style='margin-bottom: 5px;'>I can help you with <strong>JIRA</strong> tickets and <strong>ITSM</strong> requests.</p>",
+      "  <hr style='border: 0; border-top: 1px solid #000000;'>",
+      "  <div style='margin-bottom: 25px;'>",
+      "    <div>",
+      "      <img src='https://cdn-icons-png.flaticon.com/512/5968/5968875.png' width='14' height='14' style='vertical-align: middle; margin-right: 5px;'>",
+      "      <strong>JIRA</strong>",
+      "    </div>",
+      "    <ul style='margin-top: 10px; padding-left: 20px;'>",
+      "      <li style='margin-bottom: 6px;'><code><b>jira create</b></code> — Create a new Jira ticket</li>",
+      "      <li style='margin-bottom: 6px;'><code><b>jira my tickets</b></code> — View your assigned tickets</li>",
+      "      <li style='margin-bottom: 6px;'><code><b>jira search &lt;query&gt;</b></code> — Search for tickets</li>",
+      "      <li style='margin-bottom: 6px;'><code><b>jira view &lt;KEY-123&gt;</b></code> — View ticket details</li>",
+      "    </ul>",
+      "  </div>",
       "",
-      "I can help you with **JIRA** tickets and **ITSM** requests.",
+      "  <div style='margin-bottom: 25px;'>",
+      "    <div>",
+      "      <img src='https://e7.pngegg.com/pngimages/339/655/png-clipart-jira-computer-software-customer-service-atlassian-help-desk-jira-blue-angle.png' width='14' height='14' style='vertical-align: middle; margin-right: 5px;'>",
+      "      <strong>ITSM</strong>",
+      "    </div>",
+      "    <ul style='margin-top: 10px; padding-left: 20px;'>",
+      "      <li style='margin-bottom: 6px;'><code><b>itsm create</b></code> — Create a new ITSM request</li>",
+      "      <li style='margin-bottom: 6px;'><code><b>itsm forms</b></code> — Show available form templates</li>",
+      "      <li style='margin-bottom: 6px;'><code><b>itsm debug</b></code> — Debug fields info</li>",
+      "    </ul>",
+      "  </div>",
       "",
-      "---",
-      "**<img src='https://cdn-icons-png.flaticon.com/512/5968/5968875.png' width='12' height='12' style='vertical-align:middle'> JIRA**",
-      "* `jira create` — Create a new Jira ticket",
-      "* `jira my tickets` — View your assigned tickets",
-      "* `jira search <query>` — Search for tickets",
-      "* `jira view <KEY-123>` — View ticket details",
-      "",
-     "**<img src='https://e7.pngegg.com/pngimages/339/655/png-clipart-jira-computer-software-customer-service-atlassian-help-desk-jira-blue-angle.png' width='12' height='12' style='vertical-align:middle'> ITSM**",
-      "* `itsm create` — Create a new ITSM request",
-      "* `itsm forms` — Show available form templates",
-      "* `itsm debug` — Debug fields info",
-      "",
-      "---",
-      "Type `help` to show this message again.",
-      "",
-      "**Ready?** Type `jira create` or `itsm create` to get started!"
+      "  <hr style='border: 0; border-top: 1px solid #000000;'>",
+      "  <p style='margin-bottom: 5px;'>Type <code><b>help</b></code> to show this message again.</p>",
+      "  <p><b>Ready?</b> Type <code><b>jira create</b></code> or <code><b>itsm create</b></code> to get started!</p>",
+      "</div>"
     ].join('\n');
 
     await wrappedContext.sendActivity(welcomeMessage)
