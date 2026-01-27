@@ -28,7 +28,7 @@ import {
 export async function showServiceDesks(context, state) {
   const msg = createMessage()
     .addHeader('Create ITSM Request')
-    .addHr()
+    .addDivider()
     .addStepHeader(1, 5, 'Select Service Desk')
     .addBreak()
     .add(selectionList(state.serviceDesks, d => `${d.projectName} (${d.projectKey})`))
@@ -52,7 +52,7 @@ export async function showServiceDesks(context, state) {
 export async function showPortalGroups(context, state) {
   const msg = createMessage()
     .addHeader(`Service Desk: ${state.selectedServiceDesk.projectName}`)
-    .addHr()
+    .addDivider()
     .addStepHeader(2, 5, 'Contact us about')
     .addBreak()
     .add(selectionList(state.portalGroups, g => g.name))
@@ -79,7 +79,7 @@ export async function showRequestTypes(context, state, itsmService) {
 
   const msg = createMessage()
     .addHeader(`Category: ${state.selectedPortalGroup.name}`)
-    .addHr()
+    .addDivider()
     .addStepHeader(3, 5, 'What can we help you with?')
     .addBreak()
 
@@ -215,23 +215,101 @@ export async function showFormOverview(context, state, itsmService) {
   const optionalCount = fc.fields.length - requiredCount
 
   const msg = createMessage()
-    .addStepHeader(4, 5, 'Form Fields', `Request Type: ${state.selectedRequestType.name}`)
+    .addHeader(`Request Type: ${state.selectedRequestType.name}`)
     .addDivider()
+    .addStepHeader(4, 5, 'Form')
     .addBreak()
-    .addLine(bold('Fields to fill:'))
 
+  // Separate regular fields from table fields (Email and AD Group)
+  const tableFieldNames = ['Email', 'AD Group']
+  const regularFormFields = []
+  const tableFormFields = {}
+  
   fc.fields.forEach((f, i) => {
+    // Check if field name starts with Email or AD Group (for row-based fields)
+    const isTableField = tableFieldNames.some(name => 
+      f.name.startsWith(name) || f.name.match(new RegExp(`^${name}\\s*\\(Row\\s*\\d+\\)$`, 'i'))
+    )
+    
+    if (isTableField) {
+      const match = f.name.match(/^(.+?)\s*\(Row\s*(\d+)\)$/i)
+      if (match) {
+        const [, columnName, rowNum] = match
+        if (!tableFormFields[columnName]) {
+          tableFormFields[columnName] = {}
+        }
+        tableFormFields[columnName][rowNum] = { field: f, index: i }
+      } else {
+        // Single field without row number
+        if (!tableFormFields[f.name]) {
+          tableFormFields[f.name] = {}
+        }
+        tableFormFields[f.name]['1'] = { field: f, index: i }
+      }
+    } else {
+      regularFormFields.push({ field: f, index: i })
+    }
+  })
+
+  // Display regular fields
+  regularFormFields.forEach(({ field: f, index: i }) => {
     const fieldType = itsmService.getFieldType(f)
     const typeLabel = getFieldTypeLabel(fieldType)
-    msg.addLine(`${bold(`${i + 1}.`)} ${f.name}${f.required ? ` ${ICONS.requiredBold}` : ''} ${italic(`(${typeLabel})`)}`)
+    msg.addLine(`${bold(`${i + 1}.`)} ${f.name}${f.required ? ` ${ICONS.required}` : ''} ${italic(`(${typeLabel})`)}`)
   })
+
+  // Display table fields if any
+  if (Object.keys(tableFormFields).length > 0) {
+    msg.addBreak()
+    msg.addLine(bold('Table Fields:'))
+    
+    const columnNames = Object.keys(tableFormFields)
+    const rowNumbers = new Set()
+    for (const column of columnNames) {
+      for (const rowNum of Object.keys(tableFormFields[column])) {
+        rowNumbers.add(parseInt(rowNum))
+      }
+    }
+    const sortedRows = [...rowNumbers].sort((a, b) => a - b)
+
+    // Build table HTML
+    const tableParts = []
+    tableParts.push('<table border="1" cellpadding="5" cellspacing="0">')
+    
+    // Header row
+    tableParts.push('<tr>')
+    tableParts.push('<th>Row</th>')
+    for (const col of columnNames) {
+      const { field } = Object.values(tableFormFields[col])[0]
+      const reqMark = field?.required ? ICONS.required : ''
+      const fieldType = itsmService.getFieldType(field)
+      const typeLabel = getFieldTypeLabel(fieldType)
+      tableParts.push(`<th>${col}${reqMark} ${italic(`(${typeLabel})`)}</th>`)
+    }
+    tableParts.push('</tr>')
+
+    // Data rows
+    for (const rowNum of sortedRows) {
+      tableParts.push('<tr>')
+      tableParts.push(`<td>${rowNum}</td>`)
+      for (const col of columnNames) {
+        const entry = tableFormFields[col][rowNum]
+        if (entry) {
+          tableParts.push(`<td>#${entry.index + 1}</td>`)
+        } else {
+          tableParts.push('<td>-</td>')
+        }
+      }
+      tableParts.push('</tr>')
+    }
+
+    tableParts.push('</table>')
+    msg.add(tableParts.join(''))
+  }
 
   msg.addBreak()
     .addDivider()
-    .addLine(`${ICONS.requiredBold} = Required field`)
-    .addLine(`Total: ${bold(requiredCount)} required, ${bold(optionalCount)} optional`)
-    .addBreak()
-    .addNote("Let's fill in the fields one by one...")
+    .add(`${ICONS.required} = Required field`)
 
   await context.sendActivity(msg.build())
 }
@@ -260,7 +338,7 @@ export async function showField(context, state, itsmService) {
 
   // Field name with required indicator
   if (field.required) {
-    msg.addLine(`${bold(field.name)} ${ICONS.requiredBold}`)
+    msg.add(`${bold(field.name)} ${ICONS.required}`)
       .addLine(italic('<span style="color:red">This field is required</span>'))
   } else {
     msg.addLine(`${bold(field.name)} ${italic('(Optional)')}`)
@@ -349,7 +427,11 @@ export async function showConfirmation(context, state, itsmService) {
     msg.addBreak()
       .addLine(bold('Form Values:'))
 
-    for (const field of fieldCollection.fields) {
+    // Separate regular fields from table (row) fields
+    const { regularFields, tableFields } = separateFields(fieldCollection.fields)
+
+    // Display regular fields
+    for (const field of regularFields) {
       const { value, display } = getFieldDisplayValue(field, fieldCollection, itsmService)
       const reqMark = field.required ? ICONS.required : ''
 
@@ -358,6 +440,12 @@ export async function showConfirmation(context, state, itsmService) {
       } else {
         msg.addLine(`• ${bold(field.name)}${reqMark}: ${display}`)
       }
+    }
+
+    // Display table fields if any
+    if (Object.keys(tableFields).length > 0) {
+      msg.addBreak()
+      msg.add(formatTableFields(tableFields, fieldCollection, itsmService))
     }
 
     msg.addBreak()
@@ -373,6 +461,85 @@ export async function showConfirmation(context, state, itsmService) {
     ])
 
   await context.sendActivity(msg.build())
+}
+
+/**
+ * Separate fields into regular fields and table (row-based) fields
+ * @param {object[]} fields - Array of field objects
+ * @returns {{regularFields: object[], tableFields: object}} Separated fields
+ */
+function separateFields(fields) {
+  const regularFields = []
+  const tableFields = {} // { columnName: { row1: field, row2: field, ... } }
+  const rowPattern = /^(.+?)\s*\(Row\s*(\d+)\)$/i
+
+  for (const field of fields) {
+    const match = field.name.match(rowPattern)
+    if (match) {
+      const [, columnName, rowNum] = match
+      if (!tableFields[columnName]) {
+        tableFields[columnName] = {}
+      }
+      tableFields[columnName][rowNum] = field
+    } else {
+      regularFields.push(field)
+    }
+  }
+
+  return { regularFields, tableFields }
+}
+
+/**
+ * Format table fields as an HTML table
+ * @param {object} tableFields - Object with column names and row data
+ * @param {object} fieldCollection - Collection of field values
+ * @param {object} itsmService - ITSM service instance
+ * @returns {string} HTML table string
+ */
+function formatTableFields(tableFields, fieldCollection, itsmService) {
+  const columnNames = Object.keys(tableFields)
+  
+  // Find all row numbers
+  const rowNumbers = new Set()
+  for (const column of columnNames) {
+    for (const rowNum of Object.keys(tableFields[column])) {
+      rowNumbers.add(parseInt(rowNum))
+    }
+  }
+  const sortedRows = [...rowNumbers].sort((a, b) => a - b)
+
+  // Build table HTML
+  const parts = []
+  parts.push('<table border="1" cellpadding="5" cellspacing="0">')
+  
+  // Header row
+  parts.push('<tr>')
+  parts.push('<th>Row</th>')
+  for (const col of columnNames) {
+    const field = Object.values(tableFields[col])[0]
+    const reqMark = field?.required ? ICONS.required : ''
+    parts.push(`<th>${col}${reqMark}</th>`)
+  }
+  parts.push('</tr>')
+
+  // Data rows
+  for (const rowNum of sortedRows) {
+    parts.push('<tr>')
+    parts.push(`<td>${rowNum}</td>`)
+    for (const col of columnNames) {
+      const field = tableFields[col][rowNum]
+      if (field) {
+        const { display } = getFieldDisplayValue(field, fieldCollection, itsmService)
+        parts.push(`<td>${display}</td>`)
+      } else {
+        parts.push('<td>-</td>')
+      }
+    }
+    parts.push('</tr>')
+  }
+
+  parts.push('</table>')
+  return parts.join('')
 }
 
 /**
