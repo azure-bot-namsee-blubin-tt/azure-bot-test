@@ -6,7 +6,14 @@ import { setState } from '../../state/conversation.mjs'
 import { showField, showConfirmation, sendTyping } from './display.mjs'
 
 /**
- * Handle field input
+ * Handle user input for current field in the collection
+ * Validates input based on field type and stores the value
+ * @param {object} bot - Bot instance with itsmService
+ * @param {object} context - Turn context from bot framework
+ * @param {string} text - User input text
+ * @param {object} state - Current conversation state
+ * @param {string} conversationId - Unique conversation identifier
+ * @returns {Promise<void>}
  */
 export async function handleField(bot, context, text, state, conversationId) {
   const fc = state.fieldCollection
@@ -178,7 +185,12 @@ export async function handleField(bot, context, text, state, conversationId) {
 }
 
 /**
- * Move to next field or confirmation
+ * Move to next field in collection or to confirmation if done
+ * @param {object} context - Turn context from bot framework
+ * @param {object} state - Current conversation state
+ * @param {string} conversationId - Unique conversation identifier
+ * @param {object} itsmService - ITSM service instance
+ * @returns {Promise<void>}
  */
 export async function moveToNextField(context, state, conversationId, itsmService) {
   const fc = state.fieldCollection
@@ -195,7 +207,12 @@ export async function moveToNextField(context, state, conversationId, itsmServic
 }
 
 /**
- * Prepare fields for collection (combines portal and form fields)
+ * Prepare fields for collection by combining portal and form fields
+ * Maps portal fields to form questions and creates unified field list
+ * @param {object[]} portalFields - Standard portal fields from ITSM
+ * @param {object[]} formQuestions - Form questions from ProForma
+ * @param {object} itsmService - ITSM service instance
+ * @returns {object[]} Combined and mapped array of all fields
  */
 export function prepareFieldsForCollection(portalFields, formQuestions, itsmService) {
   const allFields = []

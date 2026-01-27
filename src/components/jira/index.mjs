@@ -9,6 +9,13 @@ import { sendTyping, extractTextFromADF } from '../../utils/index.mjs'
 /**
  * Create Jira handlers bound to bot instance
  * @param {object} bot - Bot instance with jiraService
+ * @returns {object} Object containing all Jira handler functions:
+ *   - startTicketCreation: Start interactive ticket creation flow
+ *   - handleTicketFlow: Handle user input during ticket creation
+ *   - quickCreateTicket: Create ticket with single command
+ *   - showMyTickets: Display user's assigned tickets
+ *   - searchTickets: Search for tickets by query
+ *   - viewTicket: View ticket details
  */
 export function createJiraHandlers(bot) {
   return {
@@ -25,6 +32,13 @@ export function createJiraHandlers(bot) {
  * Ticket Creation Flow
  */
 
+/**
+ * Start the interactive ticket creation flow
+ * @param {object} bot - Bot instance with jiraService
+ * @param {object} context - Turn context from bot framework
+ * @param {string} conversationId - Unique conversation identifier
+ * @returns {Promise<void>}
+ */
 async function startTicketCreation(bot, context, conversationId) {
   if (!bot.jiraService) {
     await context.sendActivity(
@@ -45,6 +59,15 @@ async function startTicketCreation(bot, context, conversationId) {
   )
 }
 
+/**
+ * Handle user input during ticket creation flow
+ * @param {object} bot - Bot instance with jiraService
+ * @param {object} context - Turn context from bot framework
+ * @param {string} text - User input text
+ * @param {object} state - Current conversation state
+ * @param {string} conversationId - Unique conversation identifier
+ * @returns {Promise<void>}
+ */
 async function handleTicketFlow(bot, context, text, state, conversationId) {
   if (text.toLowerCase() === 'cancel') {
     deleteState(conversationId)
@@ -135,7 +158,13 @@ Type \`yes\` to create the ticket or \`no\` to cancel.`
   }
 }
 
-
+/**
+ * Create a ticket quickly with just a summary
+ * @param {object} bot - Bot instance with jiraService
+ * @param {object} context - Turn context from bot framework
+ * @param {string} summary - Ticket summary/title
+ * @returns {Promise<void>}
+ */
 async function quickCreateTicket(bot, context, summary) {
   if (!bot.jiraService) {
     await context.sendActivity('Jira integration is not configured.')
@@ -161,6 +190,13 @@ async function quickCreateTicket(bot, context, summary) {
   }
 }
 
+/**
+ * Create a Jira ticket with full ticket data
+ * @param {object} bot - Bot instance with jiraService
+ * @param {object} context - Turn context from bot framework
+ * @param {object} ticketData - Ticket data containing summary, description, issueType, priority
+ * @returns {Promise<void>}
+ */
 async function createTicket(bot, context, ticketData) {
   if (!bot.jiraService) {
     await context.sendActivity('Jira service is not available.')
@@ -182,6 +218,12 @@ async function createTicket(bot, context, ticketData) {
   }
 }
 
+/**
+ * Display the current user's assigned tickets
+ * @param {object} bot - Bot instance with jiraService
+ * @param {object} context - Turn context from bot framework
+ * @returns {Promise<void>}
+ */
 async function showMyTickets(bot, context) {
   if (!bot.jiraService) {
     await context.sendActivity('Jira service is not configured.')
@@ -213,6 +255,13 @@ async function showMyTickets(bot, context) {
   }
 }
 
+/**
+ * Search for Jira tickets by text query
+ * @param {object} bot - Bot instance with jiraService
+ * @param {object} context - Turn context from bot framework
+ * @param {string} query - Search query string
+ * @returns {Promise<void>}
+ */
 async function searchTickets(bot, context, query) {
   if (!bot.jiraService) {
     await context.sendActivity('Jira service is not configured.')
@@ -251,6 +300,13 @@ async function searchTickets(bot, context, query) {
   }
 }
 
+/**
+ * View details of a specific Jira ticket
+ * @param {object} bot - Bot instance with jiraService
+ * @param {object} context - Turn context from bot framework
+ * @param {string} ticketKey - Jira ticket key (e.g., 'PROJ-123')
+ * @returns {Promise<void>}
+ */
 async function viewTicket(bot, context, ticketKey) {
   if (!bot.jiraService) {
     await context.sendActivity('Jira service is not configured.')

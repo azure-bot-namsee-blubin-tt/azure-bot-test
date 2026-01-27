@@ -28,7 +28,8 @@ export const config = {
 }
 
 /**
- * Validate required environment variables
+ * Validate required environment variables are set
+ * @returns {boolean} True if all required variables are present, false otherwise
  */
 export function validateConfig() {
   const required = ['JIRA_BASE_URL', 'JIRA_EMAIL', 'JIRA_API_TOKEN']

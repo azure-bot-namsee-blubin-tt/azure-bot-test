@@ -121,6 +121,9 @@ export class ApiClient {
 
   /**
    * HTTP GET request
+   * @param {string} endpoint - API endpoint (relative to baseUrl)
+   * @param {RequestConfig} [config] - Request configuration
+   * @returns {Promise<any>} Response data
    */
   async get(endpoint, config = {}) {
     return this.request(endpoint, { ...config, method: 'GET' })
@@ -128,6 +131,10 @@ export class ApiClient {
 
   /**
    * HTTP POST request
+   * @param {string} endpoint - API endpoint (relative to baseUrl)
+   * @param {Object|string} data - Request body data
+   * @param {RequestConfig} [config] - Request configuration
+   * @returns {Promise<any>} Response data
    */
   async post(endpoint, data, config = {}) {
     return this.request(endpoint, {
@@ -139,6 +146,10 @@ export class ApiClient {
 
   /**
    * HTTP PUT request
+   * @param {string} endpoint - API endpoint (relative to baseUrl)
+   * @param {Object|string} data - Request body data
+   * @param {RequestConfig} [config] - Request configuration
+   * @returns {Promise<any>} Response data
    */
   async put(endpoint, data, config = {}) {
     return this.request(endpoint, {
@@ -150,6 +161,10 @@ export class ApiClient {
 
   /**
    * HTTP PATCH request
+   * @param {string} endpoint - API endpoint (relative to baseUrl)
+   * @param {Object|string} data - Request body data
+   * @param {RequestConfig} [config] - Request configuration
+   * @returns {Promise<any>} Response data
    */
   async patch(endpoint, data, config = {}) {
     return this.request(endpoint, {
@@ -161,18 +176,35 @@ export class ApiClient {
 
   /**
    * HTTP DELETE request
+   * @param {string} endpoint - API endpoint (relative to baseUrl)
+   * @param {RequestConfig} [config] - Request configuration
+   * @returns {Promise<any>} Response data
    */
   async delete(endpoint, config = {}) {
     return this.request(endpoint, { ...config, method: 'DELETE' })
   }
 
+  /**
+   * Build full URL from endpoint
+   * @param {string} endpoint - API endpoint
+   * @returns {string} Full URL
+   * @private
+   */
   _buildUrl(endpoint) {
     if (endpoint.startsWith('http')) {
       return endpoint
     }
-    return `${this.baseUrl}${endpoint}`
+    return [this.baseUrl, endpoint].join('')
   }
 
+  /**
+   * Build request options object
+   * @param {string} method - HTTP method
+   * @param {Object} headers - Request headers
+   * @param {Object|string} body - Request body
+   * @returns {Object} Fetch options object
+   * @private
+   */
   _buildRequestOptions(method, headers, body) {
     const options = {
       method: method.toUpperCase(),
@@ -196,6 +228,14 @@ export class ApiClient {
     return options
   }
 
+  /**
+   * Fetch with timeout support
+   * @param {string} url - Request URL
+   * @param {Object} options - Fetch options
+   * @param {number} timeout - Timeout in milliseconds
+   * @returns {Promise<Response>} Fetch response
+   * @private
+   */
   async _fetchWithTimeout(url, options, timeout) {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), timeout)
@@ -217,6 +257,15 @@ export class ApiClient {
     }
   }
 
+  /**
+   * Handle HTTP response and parse data
+   * @param {Response} response - Fetch response object
+   * @param {string} endpoint - API endpoint
+   * @param {string} method - HTTP method
+   * @returns {Promise<any>} Parsed response data
+   * @throws {ApiError} When response is not ok
+   * @private
+   */
   async _handleResponse(response, endpoint, method) {
     if (!response.ok) {
       throw await ApiError.fromResponse(response, endpoint, method)
@@ -234,6 +283,14 @@ export class ApiClient {
     }
   }
 
+  /**
+   * Wrap error in ApiError
+   * @param {Error} error - Original error
+   * @param {string} endpoint - API endpoint
+   * @param {string} method - HTTP method
+   * @returns {ApiError} Wrapped error
+   * @private
+   */
   _wrapError(error, endpoint, method) {
     if (error instanceof ApiError) {
       return error
@@ -242,6 +299,12 @@ export class ApiClient {
     return ApiError.networkError(endpoint, method, error)
   }
 
+  /**
+   * Delay execution
+   * @param {number} ms - Delay in milliseconds
+   * @returns {Promise<void>}
+   * @private
+   */
   _delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms))
   }

@@ -30,6 +30,10 @@ const WELCOME_CONFIG = [
   },
 ]
 
+/**
+ * Generate the welcome message HTML for new users
+ * @returns {string} Formatted HTML welcome message with available commands
+ */
 export function welcomeMessage() {
   const parts = [
     "<div style='font-family: sans-serif;'>",

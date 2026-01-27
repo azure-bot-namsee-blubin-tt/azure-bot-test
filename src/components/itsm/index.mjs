@@ -29,6 +29,11 @@ import {
 // Public API
 // ============================================
 
+/**
+ * Create ITSM handlers bound to bot instance
+ * @param {object} bot - Bot instance with itsmService
+ * @returns {object} Object containing all ITSM handler functions
+ */
 export function createITSMHandlers(bot) {
   return {
     startRequestCreation: (ctx, convId) => startRequestCreation(bot, ctx, convId),
@@ -40,6 +45,13 @@ export function createITSMHandlers(bot) {
 }
 
 
+/**
+ * Start the ITSM request creation flow
+ * @param {object} bot - Bot instance with itsmService
+ * @param {object} context - Turn context from bot framework
+ * @param {string} conversationId - Unique conversation identifier
+ * @returns {Promise<void>}
+ */
 async function startRequestCreation(bot, context, conversationId) {
   if (!bot.itsmService) {
     await context.sendActivity('ITSM integration is not configured.')
@@ -68,6 +80,16 @@ async function startRequestCreation(bot, context, conversationId) {
   }
 }
 
+/**
+ * Main flow handler for ITSM request creation
+ * Routes user input to appropriate step handler based on current state
+ * @param {object} bot - Bot instance with itsmService
+ * @param {object} context - Turn context from bot framework
+ * @param {string} text - User input text
+ * @param {object} state - Current conversation state
+ * @param {string} conversationId - Unique conversation identifier
+ * @returns {Promise<void>}
+ */
 async function handleRequestFlow(bot, context, text, state, conversationId) {
   const cmd = text.toLowerCase().trim()
 
@@ -102,6 +124,14 @@ async function handleRequestFlow(bot, context, text, state, conversationId) {
   }
 }
 
+/**
+ * Navigate back to the previous step in the request creation flow
+ * @param {object} bot - Bot instance with itsmService
+ * @param {object} context - Turn context from bot framework
+ * @param {object} state - Current conversation state
+ * @param {string} conversationId - Unique conversation identifier
+ * @returns {Promise<void>}
+ */
 async function goBack(bot, context, state, conversationId) {
   const backMap = {
     'select_service_desk': () => {
@@ -157,6 +187,15 @@ async function goBack(bot, context, state, conversationId) {
   await backMap[state.step]?.()
 }
 
+/**
+ * Handle service desk selection step
+ * @param {object} bot - Bot instance with itsmService
+ * @param {object} context - Turn context from bot framework
+ * @param {string} text - User input (selection number)
+ * @param {object} state - Current conversation state
+ * @param {string} conversationId - Unique conversation identifier
+ * @returns {Promise<void>}
+ */
 async function handleServiceDesk(bot, context, text, state, conversationId) {
   const selected = selectFromList(text, state.serviceDesks, 'projectKey')
   if (!selected) {
@@ -190,6 +229,15 @@ async function handleServiceDesk(bot, context, text, state, conversationId) {
   }
 }
 
+/**
+ * Handle portal group selection step
+ * @param {object} bot - Bot instance with itsmService
+ * @param {object} context - Turn context from bot framework
+ * @param {string} text - User input (selection number)
+ * @param {object} state - Current conversation state
+ * @param {string} conversationId - Unique conversation identifier
+ * @returns {Promise<void>}
+ */
 async function handlePortalGroup(bot, context, text, state, conversationId) {
   const selected = selectFromList(text, state.portalGroups)
   if (!selected) {
@@ -209,6 +257,15 @@ async function handlePortalGroup(bot, context, text, state, conversationId) {
   await showRequestTypes(context, state, bot.itsmService)
 }
 
+/**
+ * Handle request type selection step
+ * @param {object} bot - Bot instance with itsmService
+ * @param {object} context - Turn context from bot framework
+ * @param {string} text - User input (selection number)
+ * @param {object} state - Current conversation state
+ * @param {string} conversationId - Unique conversation identifier
+ * @returns {Promise<void>}
+ */
 async function handleRequestType(bot, context, text, state, conversationId) {
   const types = state.filteredRequestTypes || []
   const selected = selectFromList(text, types)
@@ -271,6 +328,15 @@ async function handleRequestType(bot, context, text, state, conversationId) {
   }
 }
 
+/**
+ * Handle confirmation step for request creation
+ * @param {object} bot - Bot instance with itsmService
+ * @param {object} context - Turn context from bot framework
+ * @param {string} text - User input (yes/no)
+ * @param {object} state - Current conversation state
+ * @param {string} conversationId - Unique conversation identifier
+ * @returns {Promise<void>}
+ */
 async function handleConfirm(bot, context, text, state, conversationId) {
   const cmd = text.toLowerCase()
   if (cmd === 'yes' || cmd === 'y' || cmd === 'retry') {
@@ -283,6 +349,14 @@ async function handleConfirm(bot, context, text, state, conversationId) {
   }
 }
 
+/**
+ * Create the ITSM request with collected field values
+ * @param {object} bot - Bot instance with itsmService
+ * @param {object} context - Turn context from bot framework
+ * @param {object} state - Current conversation state with collected values
+ * @param {string} conversationId - Unique conversation identifier
+ * @returns {Promise<void>}
+ */
 async function createRequest(bot, context, state, conversationId) {
   const fc = state.fieldCollection
 
@@ -353,6 +427,11 @@ async function createRequest(bot, context, state, conversationId) {
 // Helper Functions
 // ============================================
 
+/**
+ * Get list of missing required fields from field collection
+ * @param {object} fc - Field collection object with fields and collected values
+ * @returns {string[]} Array of missing required field names
+ */
 function getMissingRequiredFields(fc) {
   const missing = []
   for (const field of (fc?.fields || [])) {
@@ -372,6 +451,11 @@ function getMissingRequiredFields(fc) {
   return missing
 }
 
+/**
+ * Get formatted field values for API submission
+ * @param {object} fc - Field collection object with collected values
+ * @returns {object} Formatted field values for Jira API
+ */
 function getCollectedFieldValues(fc) {
   const fieldValues = {}
   for (const [key, value] of Object.entries(fc?.collectedValues || {})) {
@@ -382,6 +466,14 @@ function getCollectedFieldValues(fc) {
   return fieldValues
 }
 
+/**
+ * Attach a form to an issue and fill it with collected values
+ * @param {object} bot - Bot instance with itsmService
+ * @param {object} result - Request creation result containing issueId
+ * @param {object} state - Conversation state with form template
+ * @param {object} fc - Field collection with form answers
+ * @returns {Promise<string>} Status message about form attachment
+ */
 async function attachAndFillForm(bot, result, state, fc) {
   try {
     const issueId = result.issueId
@@ -419,6 +511,11 @@ async function attachAndFillForm(bot, result, state, fc) {
   }
 }
 
+/**
+ * Build form answers object from field collection
+ * @param {object} fc - Field collection with form answers and portal values
+ * @returns {object} Valid answers formatted for form submission
+ */
 function buildFormAnswers(fc) {
   const validAnswers = {}
 
@@ -444,6 +541,12 @@ function buildFormAnswers(fc) {
 // Debug Functions
 // ============================================
 
+/**
+ * Debug function to display ITSM service desk and field information
+ * @param {object} bot - Bot instance with itsmService
+ * @param {object} context - Turn context from bot framework
+ * @returns {Promise<void>}
+ */
 async function debugFields(bot, context) {
   if (!bot.itsmService) {
     await context.sendActivity('ITSM service not configured.')
@@ -497,6 +600,13 @@ async function debugFields(bot, context) {
   }
 }
 
+/**
+ * Show available form templates for a project
+ * @param {object} bot - Bot instance with itsmService
+ * @param {object} context - Turn context from bot framework
+ * @param {string} projectKey - Jira project key
+ * @returns {Promise<void>}
+ */
 async function showForms(bot, context, projectKey) {
   if (!bot.itsmService) {
     await context.sendActivity('ITSM service not configured.')
@@ -546,6 +656,14 @@ async function showForms(bot, context, projectKey) {
   }
 }
 
+/**
+ * Test function to attach a form template to an issue
+ * @param {object} bot - Bot instance with itsmService
+ * @param {object} context - Turn context from bot framework
+ * @param {string} issueKey - Jira issue key (e.g., 'PROJ-123')
+ * @param {string} formTemplateId - UUID of the form template to attach
+ * @returns {Promise<void>}
+ */
 async function testAttachForm(bot, context, issueKey, formTemplateId) {
   if (!bot.itsmService) {
     await context.sendActivity(`${ICONS.error} ITSM service not configured.`)

@@ -4,7 +4,18 @@
  */
 import { createBasicAuthClient, ApiClient } from '../common/services/index.mjs'
 
+/**
+ * ITSMService class for Jira Service Management operations
+ * Provides methods for service desks, request types, forms, and request creation
+ */
 export class ITSMService {
+  /**
+   * Create a new ITSMService instance
+   * @param {object} config - Configuration object
+   * @param {string} config.baseUrl - Jira base URL
+   * @param {string} config.email - Jira account email
+   * @param {string} config.apiToken - Jira API token
+   */
   constructor(config) {
     this.baseUrl = config.baseUrl.replace(/\/$/, '')
     this._cloudId = null
@@ -43,6 +54,11 @@ export class ITSMService {
     this._credentials = Buffer.from(`${config.email}:${config.apiToken}`).toString('base64')
   }
 
+  /**
+   * Get or create the forms API client (lazy initialization)
+   * @private
+   * @returns {Promise<ApiClient>} Forms API client
+   */
   async _getFormsClient() {
     if (this._formsClient) return this._formsClient
 
@@ -60,16 +76,30 @@ export class ITSMService {
     return this._formsClient
   }
 
+  /**
+   * Get all service desks
+   * @returns {Promise<object[]>} Array of service desk objects
+   */
   async getServiceDesks() {
     const result = await this.serviceDeskClient.get('/servicedesk')
     return result.values || []
   }
 
+  /**
+   * Get issue types (work types) for a project
+   * @param {string} projectKey - Jira project key
+   * @returns {Promise<object[]>} Array of issue type objects
+   */
   async getWorkTypes(projectKey) {
     const result = await this.apiClient.get(`/project/${projectKey}`)
     return result.issueTypes || []
   }
 
+  /**
+   * Get unique work types from request types in a service desk
+   * @param {string} serviceDeskId - Service desk ID
+   * @returns {Promise<object[]>} Array of work type objects
+   */
   async getWorkTypesFromRequestTypes(serviceDeskId) {
     const requestTypes = await this.getRequestTypes(serviceDeskId)
     const workTypeMap = new Map()
@@ -98,26 +128,53 @@ export class ITSMService {
     return Array.from(workTypeMap.values())
   }
 
+  /**
+   * Get portal groups for a service desk
+   * @param {string} serviceDeskId - Service desk ID
+   * @returns {Promise<object[]>} Array of portal group objects
+   */
   async getPortalGroups(serviceDeskId) {
     const result = await this.serviceDeskClient.get(`/servicedesk/${serviceDeskId}/requesttypegroup`)
     return result.values || []
   }
 
+  /**
+   * Get request types filtered by portal group
+   * @param {string} serviceDeskId - Service desk ID
+   * @param {string} groupId - Portal group ID
+   * @returns {Promise<object[]>} Array of request type objects
+   */
   async getRequestTypesByGroup(serviceDeskId, groupId) {
     const allRequestTypes = await this.getRequestTypes(serviceDeskId)
     return allRequestTypes.filter(rt => rt.groupIds?.includes(groupId.toString()))
   }
 
+  /**
+   * Get all request types for a service desk
+   * @param {string} serviceDeskId - Service desk ID
+   * @returns {Promise<object[]>} Array of request type objects
+   */
   async getRequestTypes(serviceDeskId) {
     const result = await this.serviceDeskClient.get(`/servicedesk/${serviceDeskId}/requesttype`)
     return result.values || []
   }
 
+  /**
+   * Get request types filtered by work type (issue type)
+   * @param {string} serviceDeskId - Service desk ID
+   * @param {string} issueTypeId - Issue type ID
+   * @returns {Promise<object[]>} Array of request type objects
+   */
   async getRequestTypesByWorkType(serviceDeskId, issueTypeId) {
     const allRequestTypes = await this.getRequestTypes(serviceDeskId)
     return allRequestTypes.filter(rt => rt.issueTypeId === issueTypeId)
   }
 
+  /**
+   * Get request types grouped by their work type
+   * @param {string} serviceDeskId - Service desk ID
+   * @returns {Promise<object[]>} Array of {workType, requestTypes} objects
+   */
   async getRequestTypesGroupedByWorkType(serviceDeskId) {
     const requestTypes = await this.getRequestTypes(serviceDeskId)
     const workTypes = await this.getWorkTypesFromRequestTypes(serviceDeskId)
@@ -127,24 +184,46 @@ export class ITSMService {
       requestTypes: requestTypes.filter(rt => rt.issueTypeId === workType.id),
     })).filter(group => group.requestTypes.length > 0)
   }
-
-  async getRequestTypeFields(serviceDeskId, requestTypeId) {
+  /**
+   * Get all fields for a request type
+   * @param {string} serviceDeskId - Service desk ID
+   * @param {string} requestTypeId - Request type ID
+   * @returns {Promise<object[]>} Array of field objects
+   */  async getRequestTypeFields(serviceDeskId, requestTypeId) {
     const result = await this.serviceDeskClient.get(
       `/servicedesk/${serviceDeskId}/requesttype/${requestTypeId}/field`
     )
     return result.requestTypeFields || []
   }
 
+  /**
+   * Get required and visible fields for a request type
+   * @param {string} serviceDeskId - Service desk ID
+   * @param {string} requestTypeId - Request type ID
+   * @returns {Promise<object[]>} Array of required field objects
+   */
   async getRequiredFields(serviceDeskId, requestTypeId) {
     const fields = await this.getRequestTypeFields(serviceDeskId, requestTypeId)
     return fields.filter(field => field.required && field.visible)
   }
 
+  /**
+   * Get all visible fields for a request type
+   * @param {string} serviceDeskId - Service desk ID
+   * @param {string} requestTypeId - Request type ID
+   * @returns {Promise<object[]>} Array of visible field objects
+   */
   async getVisibleFields(serviceDeskId, requestTypeId) {
     const fields = await this.getRequestTypeFields(serviceDeskId, requestTypeId)
     return fields.filter(field => field.visible)
   }
 
+  /**
+   * Get all fields for a request type (including hidden)
+   * @param {string} serviceDeskId - Service desk ID
+   * @param {string} requestTypeId - Request type ID
+   * @returns {Promise<object[]>} Array of all field objects
+   */
   async getAllFields(serviceDeskId, requestTypeId) {
     const result = await this.serviceDeskClient.get(
       `/servicedesk/${serviceDeskId}/requesttype/${requestTypeId}/field`
@@ -153,6 +232,12 @@ export class ITSMService {
     return result.requestTypeFields || []
   }
 
+  /**
+   * Get visible portal fields for a request type
+   * @param {string} serviceDeskId - Service desk ID
+   * @param {string} requestTypeId - Request type ID
+   * @returns {Promise<object[]>} Array of visible field objects
+   */
   async getPortalFields(serviceDeskId, requestTypeId) {
     const result = await this.serviceDeskClient.get(
       `/servicedesk/${serviceDeskId}/requesttype/${requestTypeId}/field`
@@ -169,6 +254,11 @@ export class ITSMService {
     return fields.filter(f => f.visible)
   }
 
+  /**
+   * Get ProForma forms for a request type (legacy API)
+   * @param {string} requestTypeId - Request type ID
+   * @returns {Promise<object[]>} Array of form objects
+   */
   async getProFormaForms(requestTypeId) {
     try {
       const result = await this.proformaClient.get(`/proforma/1/requesttype/${requestTypeId}/forms`)
@@ -180,6 +270,11 @@ export class ITSMService {
     }
   }
 
+  /**
+   * Get ProForma form fields by form ID (legacy API)
+   * @param {string} formId - Form ID
+   * @returns {Promise<object|null>} Form details or null if not found
+   */
   async getProFormaFormFields(formId) {
     try {
       const result = await this.proformaClient.get(`/proforma/1/form/${formId}`)
@@ -191,6 +286,14 @@ export class ITSMService {
     }
   }
 
+  /**
+   * Get comprehensive fields including portal and form fields
+   * @param {string} serviceDeskId - Service desk ID
+   * @param {string} requestTypeId - Request type ID
+   * @param {string} projectKey - Project key (unused, kept for compatibility)
+   * @param {string} issueTypeId - Issue type ID (unused, kept for compatibility)
+   * @returns {Promise<object[]>} Array of portal field objects
+   */
   async getComprehensiveFields(serviceDeskId, requestTypeId, projectKey, issueTypeId) {
     const portalFields = await this.getPortalFields(serviceDeskId, requestTypeId)
 
@@ -202,6 +305,16 @@ export class ITSMService {
     return portalFields
   }
 
+  /**
+   * Create a new ITSM request
+   * @param {object} input - Request input data
+   * @param {string} input.serviceDeskId - Service desk ID
+   * @param {string} input.requestTypeId - Request type ID
+   * @param {object} input.requestFieldValues - Field values for the request
+   * @param {string} [input.raiseOnBehalfOf] - Account ID to raise request on behalf of
+   * @param {string[]} [input.requestParticipants] - Array of participant account IDs
+   * @returns {Promise<object>} Created request object with issueId and issueKey
+   */
   async createRequest(input) {
     const requestData = {
       serviceDeskId: input.serviceDeskId,
@@ -214,6 +327,11 @@ export class ITSMService {
     return this.serviceDeskClient.post('/request', requestData)
   }
 
+  /**
+   * Determine the field type from field schema
+   * @param {object} field - Field object with jiraSchema and validValues
+   * @returns {string} Field type: 'text', 'textarea', 'select', 'multiselect', 'date', 'datetime', 'user', 'number', 'attachment', or 'array'
+   */
   getFieldType(field) {
     const schemaType = field.jiraSchema?.type
     const fieldId = field.fieldId?.toLowerCase()
@@ -238,6 +356,12 @@ export class ITSMService {
     return 'text'
   }
 
+  /**
+   * Format user input value based on field type for API submission
+   * @param {object} field - Field definition object
+   * @param {string} userInput - Raw user input string
+   * @returns {*} Formatted value for Jira API
+   */
   formatFieldValue(field, userInput) {
     const fieldType = this.getFieldType(field)
 
@@ -268,6 +392,13 @@ export class ITSMService {
     }
   }
 
+  /**
+   * Format select field value from user input
+   * @private
+   * @param {object} field - Field definition with validValues
+   * @param {string} userInput - User input (index or name)
+   * @returns {object|string} Formatted value with id or raw input
+   */
   _formatSelectValue(field, userInput) {
     if (!field.validValues?.length) return userInput
 
@@ -288,6 +419,13 @@ export class ITSMService {
     return userInput
   }
 
+  /**
+   * Format multi-select field value from user input
+   * @private
+   * @param {object} field - Field definition with validValues
+   * @param {string} userInput - Comma-separated indices or names
+   * @returns {object[]} Array of formatted values with ids
+   */
   _formatMultiSelectValue(field, userInput) {
     if (!field.validValues?.length) {
       return userInput.split(',').map(v => v.trim())
@@ -314,6 +452,12 @@ export class ITSMService {
     return results
   }
 
+  /**
+   * Format date value to ISO format
+   * @private
+   * @param {string} userInput - User input date string
+   * @returns {string} ISO date string (YYYY-MM-DD) or original input
+   */
   _formatDateValue(userInput) {
     const date = new Date(userInput)
     if (!isNaN(date.getTime())) {
@@ -322,6 +466,12 @@ export class ITSMService {
     return userInput
   }
 
+  /**
+   * Get display-friendly value for a field
+   * @param {object} field - Field definition object
+   * @param {*} value - Stored field value
+   * @returns {string} Human-readable display value
+   */
   getDisplayValue(field, value) {
     if (value === null || value === undefined) return '(empty)'
 
@@ -349,14 +499,29 @@ export class ITSMService {
     return String(value)
   }
 
+  /**
+   * Get browse URL for an issue
+   * @param {string} issueKey - Issue key (e.g., 'PROJ-123')
+   * @returns {string} Full URL to browse the issue
+   */
   getPortalUrl(issueKey) {
     return `${this.baseUrl}/browse/${issueKey}`
   }
 
+  /**
+   * Get service desk portal URL
+   * @param {string} serviceDeskId - Service desk ID
+   * @returns {string} Full URL to the service desk portal
+   */
   getServiceDeskPortalUrl(serviceDeskId) {
     return `${this.baseUrl}/servicedesk/customer/portal/${serviceDeskId}`
   }
 
+  /**
+   * Get Atlassian Cloud ID for the instance
+   * @returns {Promise<string>} Cloud ID for the Jira instance
+   * @throws {Error} If cloud ID cannot be retrieved
+   */
   async getCloudId() {
     if (this._cloudId) return this._cloudId
 
@@ -521,6 +686,12 @@ export class ITSMService {
     return result
   }
 
+  /**
+   * Debug helper to test Forms API connectivity
+   * @param {string} projectKey - Project key to test
+   * @param {string} [issueIdOrKey] - Optional issue to test forms on
+   * @returns {Promise<object>} Debug results with cloudId, templates, issueForms, errors
+   */
   async debugFormsAPI(projectKey, issueIdOrKey = null) {
     const results = {
       cloudId: null,
@@ -627,7 +798,9 @@ export class ITSMService {
 }
 
 /**
- * Create ITSMService from environment variables
+ * Create ITSMService instance from environment variables
+ * @returns {ITSMService} Configured ITSMService instance
+ * @throws {Error} If required environment variables are missing
  */
 export function createITSMServiceFromEnv() {
   const baseUrl = process.env.JIRA_BASE_URL

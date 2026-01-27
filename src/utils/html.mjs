@@ -19,7 +19,7 @@ export const ICONS = {
   next: '▶️',
   check: '✓',
   required: '<span style="color:red">*</span>',
-  requiredBold: '<span style="color:red"><b>*</b></span>',
+  requiredBold: '<span style="color:red"><strong>*</strong></span>',
 }
 
 export const DIVIDER = '━━━━━━━━━━━━━━━━━━━━'
@@ -31,9 +31,12 @@ export const HR = "<hr style='border: 0; border-top: 1px solid #000000;'>"
 
 /**
  * Create a header with optional subtitle
+ * @param {string} title - Header title text
+ * @param {string|null} [subtitle] - Optional subtitle text
+ * @returns {string} Formatted HTML header string
  */
 export function header(title, subtitle = null) {
-  const parts = ['<b>', title, '</b>']
+  const parts = ['<strong>', title, '</strong>']
   if (subtitle) {
     parts.push('<br/><i>', subtitle, '</i>')
   }
@@ -41,10 +44,15 @@ export function header(title, subtitle = null) {
 }
 
 /**
- * Create a step header with progress
+ * Create a step header with progress indicator
+ * @param {number} step - Current step number
+ * @param {number} total - Total number of steps
+ * @param {string} title - Step title text
+ * @param {string|null} [subtitle] - Optional subtitle text
+ * @returns {string} Formatted HTML step header
  */
 export function stepHeader(step, total, title, subtitle = null) {
-  const parts = ['<b>Step ', step, '/', total, ': ', title, '</b>']
+  const parts = ['<strong>Step ', step, '/', total, ': ', title, '</strong>']
   if (subtitle) {
     parts.push('<br/><i>', subtitle, '</i>')
   }
@@ -52,7 +60,10 @@ export function stepHeader(step, total, title, subtitle = null) {
 }
 
 /**
- * Create a progress indicator
+ * Create a progress indicator text
+ * @param {number} current - Current position
+ * @param {number} total - Total count
+ * @returns {string} Formatted progress indicator (e.g., "[1/5]")
  */
 export function progress(current, total) {
   return ['<i>[', current, '/', total, ']</i>'].join('')
@@ -60,6 +71,7 @@ export function progress(current, total) {
 
 /**
  * Create a divider line
+ * @returns {string} HTML divider with line break
  */
 export function divider() {
   return [DIVIDER, '<br/>'].join('')
@@ -67,6 +79,8 @@ export function divider() {
 
 /**
  * Create italic text
+ * @param {string} text - Text to italicize
+ * @returns {string} HTML italic text
  */
 export function italic(text) {
   return ['<i>', text, '</i>'].join('')
@@ -74,13 +88,17 @@ export function italic(text) {
 
 /**
  * Create bold text
+ * @param {string} text - Text to make bold
+ * @returns {string} HTML bold text
  */
 export function bold(text) {
-  return ['<b>', text, '</b>'].join('')
+  return ['<strong>', text, '</strong>'].join('')
 }
 
 /**
- * Create code text
+ * Create inline code text
+ * @param {string} text - Text to format as code
+ * @returns {string} HTML code text
  */
 export function code(text) {
   return ['<code>', text, '</code>'].join('')
@@ -88,20 +106,27 @@ export function code(text) {
 
 /**
  * Create bold code text
+ * @param {string} text - Text to format as bold code
+ * @returns {string} HTML bold code text
  */
 export function boldCode(text) {
   return ['<strong><code>', text, '</code></strong>'].join('')
 }
 
 /**
- * Create a link
+ * Create a hyperlink
+ * @param {string} text - Link display text
+ * @param {string} url - Link URL
+ * @returns {string} HTML anchor element
  */
 export function link(text, url) {
   return ['<a href="', url, '">', text, '</a>'].join('')
 }
 
 /**
- * Create a line break
+ * Create line break(s)
+ * @param {number} [count=1] - Number of line breaks
+ * @returns {string} HTML line break(s)
  */
 export function br(count = 1) {
   return '<br/>'.repeat(count)
@@ -113,9 +138,13 @@ export function br(count = 1) {
 
 /**
  * Create a numbered list item
+ * @param {number} index - Item number (1-based)
+ * @param {string} text - Item text
+ * @param {string|null} [description] - Optional description
+ * @returns {string} Formatted numbered item HTML
  */
 export function numberedItem(index, text, description = null) {
-  const parts = ['<b>', index, '.</b> ', text]
+  const parts = ['<strong>', index, '.</strong> ', text]
   if (description) {
     parts.push('<br/><i>   ', description, '</i>')
   }
@@ -124,30 +153,40 @@ export function numberedItem(index, text, description = null) {
 
 /**
  * Create a bullet list item
+ * @param {string} text - Item text
+ * @returns {string} Bullet item string
  */
 export function bulletItem(text) {
   return ['• ', text].join('')
 }
 
 /**
- * Create a numbered list
+ * Create a numbered list from items
+ * @param {Array} items - Array of items to list
+ * @param {function} [formatter] - Function to format each item (item, index) => string
+ * @returns {string} Formatted numbered list HTML
  */
 export function numberedList(items, formatter = (item, i) => item) {
   return items.map((item, i) => numberedItem(i + 1, formatter(item, i))).join('<br/>')
 }
 
 /**
- * Create a bullet list
+ * Create a bullet list from items
+ * @param {string[]} items - Array of item strings
+ * @returns {string} Formatted bullet list HTML
  */
 export function bulletList(items) {
   return items.map(item => bulletItem(item)).join('<br/>')
 }
 
 /**
- * Create a selection list with items
+ * Create a selection list with numbered items
+ * @param {Array} items - Array of items to list
+ * @param {function} [getLabel] - Function to get display label (item) => string
+ * @returns {string} Formatted selection list HTML
  */
 export function selectionList(items, getLabel = item => item.name || item) {
-  return items.map((item, i) => ['<b>', i + 1, '.</b> ', getLabel(item)].join('')).join('<br/>')
+  return items.map((item, i) => ['<strong>', i + 1, '.</strong> ', getLabel(item)].join('')).join('<br/>')
 }
 
 // ============================================
@@ -155,10 +194,14 @@ export function selectionList(items, getLabel = item => item.name || item) {
 // ============================================
 
 /**
- * Create a field label with optional required marker
+ * Create a field label with optional markers
+ * @param {string} name - Field name
+ * @param {boolean} [required=false] - Whether field is required
+ * @param {string|null} [extra] - Extra info to display in parentheses
+ * @returns {string} Formatted field label HTML
  */
 export function fieldLabel(name, required = false, extra = null) {
-  const parts = ['<b>', name, '</b>']
+  const parts = ['<strong>', name, '</strong>']
   if (required) {
     parts.push(' ', ICONS.requiredBold)
   }
@@ -169,16 +212,24 @@ export function fieldLabel(name, required = false, extra = null) {
 }
 
 /**
- * Create a field value display
+ * Create a field value display with label
+ * @param {string} label - Field label
+ * @param {string} value - Field value to display
+ * @param {boolean} [required=false] - Whether field is required
+ * @returns {string} Formatted field value HTML
  */
 export function fieldValue(label, value, required = false) {
   const reqMark = required ? ICONS.required : ''
   const displayValue = value || '(empty)'
-  return ['• <b>', label, '</b>', reqMark, ': ', displayValue].join('')
+  return ['• <strong>', label, '</strong>', reqMark, ': ', displayValue].join('')
 }
 
 /**
- * Create a field with type indicator
+ * Create a field display with type indicator
+ * @param {string} name - Field name
+ * @param {string} type - Field type label
+ * @param {boolean} [required=false] - Whether field is required
+ * @returns {string} Formatted field with type HTML
  */
 export function fieldWithType(name, type, required = false) {
   const reqMark = required ? [' ', ICONS.required].join('') : ''
@@ -190,7 +241,9 @@ export function fieldWithType(name, type, required = false) {
 // ============================================
 
 /**
- * Create an action hint
+ * Create an action hint in italic
+ * @param {string} text - Hint text
+ * @returns {string} Formatted hint HTML
  */
 export function actionHint(text) {
   return ['<i>', text, '</i>'].join('')
@@ -198,6 +251,8 @@ export function actionHint(text) {
 
 /**
  * Create action commands list
+ * @param {Array<[string, string]>} commands - Array of [command, description] pairs
+ * @returns {string} Formatted commands list HTML
  */
 export function actionCommands(commands) {
   return commands.map(([cmd, desc]) => [code(cmd), ' - ', desc].join('')).join('<br/>')
@@ -205,6 +260,9 @@ export function actionCommands(commands) {
 
 /**
  * Create footer with available commands
+ * @param {Array<[string, string]>} commands - Array of [command, description] pairs
+ * @param {string|null} [note] - Optional note text
+ * @returns {string} Formatted footer HTML with divider and commands
  */
 export function commandFooter(commands, note = null) {
   const parts = [divider(), actionCommands(commands)]
@@ -219,10 +277,13 @@ export function commandFooter(commands, note = null) {
 // ============================================
 
 /**
- * Create a success message
+ * Create a success message with icon
+ * @param {string} title - Success message title
+ * @param {string|null} [details] - Optional additional details
+ * @returns {string} Formatted success message HTML
  */
 export function successMessage(title, details = null) {
-  const parts = ['<b>', ICONS.success, ' ', title, '</b>']
+  const parts = ['<strong>', ICONS.success, ' ', title, '</strong>']
   if (details) {
     parts.push('<br/><br/>', details)
   }
@@ -230,10 +291,14 @@ export function successMessage(title, details = null) {
 }
 
 /**
- * Create an error message
+ * Create an error message with icon
+ * @param {string} title - Error message title
+ * @param {string|null} [details] - Optional error details
+ * @param {string|null} [hint] - Optional hint for resolution
+ * @returns {string} Formatted error message HTML
  */
 export function errorMessage(title, details = null, hint = null) {
-  const parts = ['<b>', ICONS.error, ' ', title, '</b>']
+  const parts = ['<strong>', ICONS.error, ' ', title, '</strong>']
   if (details) {
     parts.push('<br/>', details)
   }
@@ -244,28 +309,36 @@ export function errorMessage(title, details = null, hint = null) {
 }
 
 /**
- * Create a warning message
+ * Create a warning message with icon
+ * @param {string} text - Warning message text
+ * @returns {string} Formatted warning message
  */
 export function warningMessage(text) {
   return [ICONS.warning, ' ', text].join('')
 }
 
 /**
- * Create an info message
+ * Create an info message in italic
+ * @param {string} text - Info message text
+ * @returns {string} Formatted info message
  */
 export function infoMessage(text) {
   return ['<i>', text, '</i>'].join('')
 }
 
 /**
- * Create elapsed time display
+ * Create elapsed time display for completed operations
+ * @param {string} timeStr - Formatted time string
+ * @returns {string} Formatted elapsed time HTML
  */
 export function elapsedTime(timeStr) {
   return ['<i style="color:gray">Completed in ', timeStr, '</i>'].join('')
 }
 
 /**
- * Create failed time display
+ * Create failed time display for failed operations
+ * @param {string} timeStr - Formatted time string
+ * @returns {string} Formatted failed time HTML
  */
 export function failedTime(timeStr) {
   return ['<i style="color:gray">Failed after ', timeStr, '</i>'].join('')
@@ -276,9 +349,13 @@ export function failedTime(timeStr) {
 // ============================================
 
 /**
- * Message builder for complex messages
+ * Message builder for constructing complex HTML messages
+ * Uses fluent interface pattern for chaining method calls
  */
 export class MessageBuilder {
+  /**
+   * Create a new MessageBuilder
+   */
   constructor() {
     this.parts = []
   }
@@ -344,7 +421,8 @@ export class MessageBuilder {
 }
 
 /**
- * Create a new message builder
+ * Create a new message builder instance
+ * @returns {MessageBuilder} New MessageBuilder instance
  */
 export function createMessage() {
   return new MessageBuilder()

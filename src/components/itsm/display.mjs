@@ -19,6 +19,12 @@ import {
 // Service Desk Selection
 // ============================================
 
+/**
+ * Display service desk selection menu
+ * @param {object} context - Turn context from bot framework
+ * @param {object} state - Conversation state containing service desks
+ * @returns {Promise<void>}
+ */
 export async function showServiceDesks(context, state) {
   const msg = createMessage()
     .addHeader('Create ITSM Request')
@@ -37,6 +43,12 @@ export async function showServiceDesks(context, state) {
 // Portal Groups Selection
 // ============================================
 
+/**
+ * Display portal groups selection menu
+ * @param {object} context - Turn context from bot framework
+ * @param {object} state - Conversation state containing portal groups and selected service desk
+ * @returns {Promise<void>}
+ */
 export async function showPortalGroups(context, state) {
   const msg = createMessage()
     .addStepHeader(2, 5, 'Contact us about', `Service Desk: ${state.selectedServiceDesk.projectName}`)
@@ -53,6 +65,13 @@ export async function showPortalGroups(context, state) {
 // Request Types Selection
 // ============================================
 
+/**
+ * Display request types selection menu with field information
+ * @param {object} context - Turn context from bot framework
+ * @param {object} state - Conversation state containing filtered request types
+ * @param {object} itsmService - ITSM service instance for fetching fields
+ * @returns {Promise<void>}
+ */
 export async function showRequestTypes(context, state, itsmService) {
   const types = state.filteredRequestTypes || []
 
@@ -91,6 +110,13 @@ export async function showRequestTypes(context, state, itsmService) {
   await context.sendActivity(msg.build())
 }
 
+/**
+ * Fetch fields and forms for all request types in parallel
+ * @param {object[]} types - Array of request types
+ * @param {object} state - Conversation state with selected service desk
+ * @param {object} itsmService - ITSM service instance
+ * @returns {Promise<[object[][], object[]]>} Tuple of [fields arrays, form templates]
+ */
 async function fetchFieldsAndForms(types, state, itsmService) {
   try {
     const fieldsPromises = types.map(t =>
@@ -110,6 +136,15 @@ async function fetchFieldsAndForms(types, state, itsmService) {
   }
 }
 
+/**
+ * Format a single request type item with its fields for display
+ * @param {number} index - 1-based index for display
+ * @param {object} type - Request type object
+ * @param {object[]} fields - Portal fields for the request type
+ * @param {object|null} formTemplate - Form template if available
+ * @param {object} itsmService - ITSM service instance
+ * @returns {string} Formatted HTML string for the request type
+ */
 function formatRequestTypeItem(index, type, fields, formTemplate, itsmService) {
   const parts = [`${bold(`${index}. ${type.name}`)}<br/>`]
 
@@ -144,6 +179,11 @@ function formatRequestTypeItem(index, type, fields, formTemplate, itsmService) {
   return parts.join('')
 }
 
+/**
+ * Filter form questions to get unique fields by label
+ * @param {object[]} formQuestions - Array of form question objects
+ * @returns {object[]} Unique form questions
+ */
 function getUniqueFields(formQuestions) {
   const seen = new Set()
   return formQuestions.filter(q => {
@@ -157,6 +197,13 @@ function getUniqueFields(formQuestions) {
 // Form Overview
 // ============================================
 
+/**
+ * Display form overview with list of fields to fill
+ * @param {object} context - Turn context from bot framework
+ * @param {object} state - Conversation state with field collection
+ * @param {object} itsmService - ITSM service instance
+ * @returns {Promise<void>}
+ */
 export async function showFormOverview(context, state, itsmService) {
   const fc = state.fieldCollection
   const requiredCount = fc.fields.filter(f => f.required).length
@@ -188,6 +235,13 @@ export async function showFormOverview(context, state, itsmService) {
 // Field Input
 // ============================================
 
+/**
+ * Display current field prompt for user input
+ * @param {object} context - Turn context from bot framework
+ * @param {object} state - Conversation state with field collection
+ * @param {object} itsmService - ITSM service instance
+ * @returns {Promise<void>}
+ */
 export async function showField(context, state, itsmService) {
   const fc = state.fieldCollection
   const field = fc.fields[fc.currentFieldIndex]
@@ -228,6 +282,12 @@ export async function showField(context, state, itsmService) {
   await context.sendActivity(msg.build())
 }
 
+/**
+ * Get field-type specific input instructions
+ * @param {object} field - Field definition object
+ * @param {string} fieldType - Field type identifier
+ * @returns {string} HTML formatted instructions string
+ */
 function getFieldInstructions(field, fieldType) {
   const formatOptions = (values) =>
     values?.map((v, i) => `  ${bold(`${i + 1}.`)} ${v.name || v.value || v.id}`).join('<br/>')
@@ -262,6 +322,13 @@ function getFieldInstructions(field, fieldType) {
 // Confirmation
 // ============================================
 
+/**
+ * Display confirmation screen with all collected values
+ * @param {object} context - Turn context from bot framework
+ * @param {object} state - Conversation state with all selections and field values
+ * @param {object} itsmService - ITSM service instance
+ * @returns {Promise<void>}
+ */
 export async function showConfirmation(context, state, itsmService) {
   const { selectedServiceDesk, selectedPortalGroup, selectedRequestType, fieldCollection } = state
 
@@ -303,6 +370,13 @@ export async function showConfirmation(context, state, itsmService) {
   await context.sendActivity(msg.build())
 }
 
+/**
+ * Get display value for a field from collected values
+ * @param {object} field - Field definition object
+ * @param {object} fieldCollection - Collection of field values
+ * @param {object} itsmService - ITSM service instance
+ * @returns {{value: *, display: string}} Object with raw value and display string
+ */
 function getFieldDisplayValue(field, fieldCollection, itsmService) {
   let value, display
 

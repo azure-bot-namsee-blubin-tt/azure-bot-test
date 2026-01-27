@@ -11,7 +11,16 @@ import { createITSMHandlers } from '../components/itsm/index.mjs'
 import { wrapContextForChannel } from '../utils/index.mjs'
 import { welcomeMessage } from './templates.mjs'
 
+/**
+ * JiraBot - Main bot class for Microsoft Teams
+ * Handles message routing and command processing for Jira and ITSM operations
+ * @extends AgentApplication
+ */
 export class JiraBot extends AgentApplication {
+  /**
+   * Create a new JiraBot instance
+   * Initializes services and sets up event handlers
+   */
   constructor() {
     super({})
 
@@ -24,6 +33,10 @@ export class JiraBot extends AgentApplication {
     this.onActivity('message', this._handleMessage)
   }
 
+  /**
+   * Initialize Jira and ITSM services from environment configuration
+   * @private
+   */
   _initializeServices() {
     try {
       this.jiraService = createJiraServiceFromEnv()
@@ -42,11 +55,24 @@ export class JiraBot extends AgentApplication {
     }
   }
 
+  /**
+   * Send welcome message to new conversation members
+   * @private
+   * @param {object} context - Turn context from bot framework
+   * @returns {Promise<void>}
+   */
   _welcome = async context => {
     const wrappedContext = wrapContextForChannel(context)
     await wrappedContext.sendActivity(welcomeMessage())
   }
 
+  /**
+   * Handle incoming message activity
+   * Routes to appropriate handler based on conversation state
+   * @private
+   * @param {object} context - Turn context from bot framework
+   * @returns {Promise<void>}
+   */
   _handleMessage = async context => {
     await this._sendTyping(context)
 
@@ -70,6 +96,14 @@ export class JiraBot extends AgentApplication {
     await this._routeCommand(wrappedContext, text, conversationId)
   }
 
+  /**
+   * Route text commands to appropriate handlers
+   * @private
+   * @param {object} context - Turn context from bot framework
+   * @param {string} text - User input text
+   * @param {string} conversationId - Unique conversation identifier
+   * @returns {Promise<void>}
+   */
   async _routeCommand(context, text, conversationId) {
     const lowerText = text.toLowerCase()
 
@@ -143,6 +177,12 @@ export class JiraBot extends AgentApplication {
     )
   }
 
+  /**
+   * Send typing indicator to show bot is processing
+   * @private
+   * @param {object} context - Turn context from bot framework
+   * @returns {Promise<void>}
+   */
   async _sendTyping(context) {
     await context.sendActivity({ type: 'typing' })
   }
