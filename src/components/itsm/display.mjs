@@ -28,7 +28,7 @@ import {
 export async function showServiceDesks(context, state) {
   const msg = createMessage()
     .addHeader('Create ITSM Request')
-    .addBreak()
+    .addHr()
     .addStepHeader(1, 5, 'Select Service Desk')
     .addBreak()
     .add(selectionList(state.serviceDesks, d => `${d.projectName} (${d.projectKey})`))
@@ -51,7 +51,9 @@ export async function showServiceDesks(context, state) {
  */
 export async function showPortalGroups(context, state) {
   const msg = createMessage()
-    .addStepHeader(2, 5, 'Contact us about', `Service Desk: ${state.selectedServiceDesk.projectName}`)
+    .addHeader(`Service Desk: ${state.selectedServiceDesk.projectName}`)
+    .addHr()
+    .addStepHeader(2, 5, 'Contact us about')
     .addBreak()
     .add(selectionList(state.portalGroups, g => g.name))
     .addBreak(2)
@@ -76,7 +78,9 @@ export async function showRequestTypes(context, state, itsmService) {
   const types = state.filteredRequestTypes || []
 
   const msg = createMessage()
-    .addStepHeader(3, 5, 'What can we help you with?', `Category: ${state.selectedPortalGroup.name}`)
+    .addHeader(`Category: ${state.selectedPortalGroup.name}`)
+    .addHr()
+    .addStepHeader(3, 5, 'What can we help you with?')
     .addBreak()
 
   if (types.length === 0) {
@@ -105,7 +109,8 @@ export async function showRequestTypes(context, state, itsmService) {
   }
 
   msg.addNote(`Type number to select. ${code('back')} to go back.`)
-    .addLine(`${ICONS.required} = Required field`)
+    .add(`${ICONS.required} = Required field`)
+    
 
   await context.sendActivity(msg.build())
 }

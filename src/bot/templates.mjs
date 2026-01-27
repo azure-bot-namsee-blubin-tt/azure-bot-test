@@ -37,7 +37,7 @@ const WELCOME_CONFIG = [
 export function welcomeMessage() {
   const parts = [
     "<div style='font-family: sans-serif;'>",
-    "  <h2 style='margin-bottom: 5px;'>👋 Welcome!</h2>",
+    "  <h2 style='margin-bottom: 5px;'>👋 Welcome!</h2> ",
     "  <p>I can help you with <strong>JIRA</strong> tickets and <strong>ITSM</strong> requests.</p>",
     HR,
   ]

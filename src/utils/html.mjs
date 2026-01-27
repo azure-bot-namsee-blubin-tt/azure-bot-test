@@ -18,8 +18,7 @@ export const ICONS = {
   back: '◀️',
   next: '▶️',
   check: '✓',
-  required: '<span style="color:red">*</span>',
-  requiredBold: '<span style="color:red"><strong>*</strong></span>',
+  required: '<span style="color: #FF5252; font-weight: bold; margin-left: 2px;">⋆</span>',
 }
 
 export const DIVIDER = '━━━━━━━━━━━━━━━━━━━━'
@@ -412,6 +411,11 @@ export class MessageBuilder {
 
   addBreak(count = 1) {
     this.parts.push(br(count))
+    return this
+  }
+
+  addHr() {
+    this.parts.push(HR)
     return this
   }
 
