@@ -48,12 +48,12 @@ export class JiraBot extends AgentApplication {
     // Use HTML format - wrapper will convert to plain text for Telegram
     const welcomeMessage = [
       "<div style='font-family: sans-serif;'>",
-      "  <h2 style='margin-bottom: 5px;'>👋 Welcome!</h2>",
+      "  <h3 style='margin-bottom: 5px;'>👋 Welcome!</h3>",
       "  <p style='margin-bottom: 5px;'>I can help you with <strong>JIRA</strong> tickets and <strong>ITSM</strong> requests.</p>",
       "  <hr style='border: 0; border-top: 1px solid #000000;'>",
       "  <div style='margin-bottom: 25px;'>",
       "    <div>",
-      "      <img src='https://cdn-icons-png.flaticon.com/512/5968/5968875.png' width='14' height='14' style='vertical-align: middle; margin-right: 5px;'>",
+      "      <img src='assets/icons/jira.png' width='14' height='14' style='vertical-align: middle; margin-right: 5px;'>",
       "      <strong>JIRA</strong>",
       "    </div>",
       "    <ul style='margin-top: 10px; padding-left: 20px;'>",
@@ -78,7 +78,7 @@ export class JiraBot extends AgentApplication {
       "",
       "  <hr style='border: 0; border-top: 1px solid #000000;'>",
       "  <p style='margin-bottom: 5px;'>Type <code><b>help</b></code> to show this message again.</p>",
-      "  <p><b>Ready?</b> Type <code><b>jira create</b></code> or <code><b>itsm create</b></code> to get started!</p>",
+      "  <p><strong>Ready?</strong> Type <code><b>jira create</b></code> or <code><b>itsm create</b></code> to get started!</p>",
       "</div>"
     ].join('\n');
 
