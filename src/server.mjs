@@ -5,6 +5,7 @@
 import express from 'express'
 import { CloudAdapter, loadAuthConfigFromEnv } from '@microsoft/agents-hosting'
 import { config } from './config/env.mjs'
+import path from 'path'
 
 /**
  * Create and configure the Express server
@@ -14,6 +15,7 @@ import { config } from './config/env.mjs'
 export function createServer(bot) {
   const app = express()
   app.use(express.json())
+  app.use('/assets', express.static(path.join(process.cwd(), 'assets')))
 
   const adapter = new CloudAdapter(loadAuthConfigFromEnv())
 
