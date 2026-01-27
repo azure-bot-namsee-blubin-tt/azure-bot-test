@@ -52,30 +52,22 @@ export class JiraBot extends AgentApplication {
       "  <p style='margin-bottom: 5px;'>I can help you with <strong>JIRA</strong> tickets and <strong>ITSM</strong> requests.</p>",
       "  <hr style='border: 0; border-top: 1px solid #000000;'>",
       "  <div style='margin-bottom: 25px;'>",
-      "    <div style='display: flex; align-items: center;'>",
-      "      <img src='https://stsharedservicemain001.blob.core.windows.net/itsm/jira-16x16.png' style='margin-right: 5px; vertical-align: middle;'>",
-      "      <strong style='line-height: 1; vertical-align: middle;'>JIRA</strong>",
-      "    </div>",
-      "    <ul style='margin-top: 10px; padding-left: 20px;'>",
-      "      <li style='margin-bottom: 10px;'><strong><code>jira create</code></strong> — Create a new Jira ticket</li>",
-      "      <li style='margin-bottom: 10px;'><strong><code>jira my tickets</code></strong> — View your assigned tickets</li>",
-      "      <li style='margin-bottom: 10px;'><strong><code>jira search &lt;query&gt;</code></strong> — Search for tickets</li>",
-      "      <li style='margin-bottom: 10px;'><strong><code>jira view &lt;KEY-123&gt;</code></strong> — View ticket details</li>",
-      "    </ul>",
+      "     <strong style='line-height: 1; vertical-align: middle;'>📝 JIRA</strong>",
+      "     <ul style='margin-top: 10px; padding-left: 20px;'>",
+      "       <li style='margin-bottom: 10px;'><strong><code>jira create</code></strong> — Create a new Jira ticket</li>",
+      "       <li style='margin-bottom: 10px;'><strong><code>jira my tickets</code></strong> — View your assigned tickets</li>",
+      "       <li style='margin-bottom: 10px;'><strong><code>jira search &lt;query&gt;</code></strong> — Search for tickets</li>",
+      "       <li style='margin-bottom: 10px;'><strong><code>jira view &lt;KEY-123&gt;</code></strong> — View ticket details</li>",
+      "     </ul>",
       "  </div>",
-      "",
       "  <div style='margin-bottom: 25px;'>",
-      "    <div style='display: flex; align-items: center;'>",
-      "      <img src='https://stsharedservicemain001.blob.core.windows.net/itsm/jira-sm.png' style='margin-right: 5px; vertical-align: middle;'>",
-      "      <strong style='line-height: 1; vertical-align: middle;'>ITSM</strong>",
-      "    </div>",
-      "    <ul style='margin-top: 10px; padding-left: 20px;'>",
-      "      <li style='margin-bottom: 10px;'><strong><code>itsm create</code></strong> — Create a new ITSM request</li>",
-      "      <li style='margin-bottom: 10px;'><strong><code>itsm forms</code></strong> — Show available form templates</li>",
-      "      <li style='margin-bottom: 10px;'><strong><code>itsm debug</code></strong> — Debug fields info</li>",
-      "    </ul>",
+      "     <strong style='line-height: 1; vertical-align: middle;'>⚙ ITSM</strong>",
+      "     <ul style='margin-top: 10px; padding-left: 20px;'>",
+      "       <li style='margin-bottom: 10px;'><strong><code>itsm create</code></strong> — Create a new ITSM request</li>",
+      "       <li style='margin-bottom: 10px;'><strong><code>itsm forms</code></strong> — Show available form templates</li>",
+      "       <li style='margin-bottom: 10px;'><strong><code>itsm debug</code></strong> — Debug fields info</li>",
+      "     </ul>",
       "  </div>",
-      "",
       "  <hr style='border: 0; border-top: 1px solid #000000;'>",
       "  <p style='margin-bottom: 5px;'>Type <b><code>help</code></b> to show this message again.</p>",
       "  <p><strong>Ready?</strong> Type <b><code>jira create</code></b> or <b><code>itsm create</code></b> to get started!</p>",
@@ -130,7 +122,7 @@ export class JiraBot extends AgentApplication {
     if (lowerText === 'jira my tickets' || lowerText === 'my tickets') {
       await this.jiraHandlers.showMyTickets(context)
       return
-    }``
+    }
 
     if (lowerText.startsWith('jira search ')) {
       const query = text.substring(12).trim()
