@@ -53,7 +53,7 @@ export class JiraBot extends AgentApplication {
       "  <hr style='border: 0; border-top: 1px solid #000000;'>",
       "  <div style='margin-bottom: 25px;'>",
       "    <div style='display: flex; align-items: center;'>",
-      "      <img src='http://localhost:3978/assets/icons/jira.svg' style='margin-right: 5px; vertical-align: middle;'>",
+      "      <img src='https://bot-api.namsee04.xyz/assets/icons/jira.svg' style='margin-right: 5px; vertical-align: middle;'>",
       "      <strong style='line-height: 1; vertical-align: middle;'>JIRA</strong>",
       "    </div>",
       "    <ul style='margin-top: 10px; padding-left: 20px;'>",
