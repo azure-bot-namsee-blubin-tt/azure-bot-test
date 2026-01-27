@@ -6,6 +6,7 @@ import express from 'express'
 import { CloudAdapter, loadAuthConfigFromEnv } from '@microsoft/agents-hosting'
 import { config } from './config/env.mjs'
 import path from 'path'
+import { fileURLToPath } from 'url'
 
 /**
  * Create and configure the Express server
@@ -15,7 +16,11 @@ import path from 'path'
 export function createServer(bot) {
   const app = express()
   app.use(express.json())
-  app.use('/assets', express.static(path.join(process.cwd(), 'assets')))
+
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const assetsPath = path.join(__dirname, 'assets');
+  app.use('/assets', express.static(assetsPath));
 
   const adapter = new CloudAdapter(loadAuthConfigFromEnv())
 
