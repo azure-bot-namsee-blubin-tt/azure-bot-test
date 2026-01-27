@@ -3,6 +3,7 @@
  * Handles all Jira REST API interactions
  */
 import { createBasicAuthClient } from '../common/services/index.mjs'
+import { withSpan, jiraMetrics, apiMetrics, log } from '../telemetry/index.mjs'
 
 export class JiraService {
   /**
@@ -37,19 +38,43 @@ export class JiraService {
    * @returns {Promise<{id: string, key: string, self: string}>}
    */
   async createTicket(input) {
-    const issueData = {
-      fields: {
-        project: { key: this.projectKey },
-        summary: input.summary,
-        description: input.description ? this._toADF(input.description) : undefined,
-        issuetype: { name: input.issueType || 'Task' },
-        ...(input.priority && { priority: { name: input.priority } }),
-        ...(input.assignee && { assignee: { accountId: input.assignee } }),
-        ...(input.labels?.length > 0 && { labels: input.labels }),
-      },
-    }
+    return withSpan('jira.createTicket', async (span) => {
+      const startTime = Date.now()
+      span.setAttributes({
+        'jira.project': this.projectKey,
+        'jira.issue_type': input.issueType || 'Task',
+        'jira.priority': input.priority || 'Medium',
+      })
 
-    return this.client.post('/issue', issueData)
+      const issueData = {
+        fields: {
+          project: { key: this.projectKey },
+          summary: input.summary,
+          description: input.description ? this._toADF(input.description) : undefined,
+          issuetype: { name: input.issueType || 'Task' },
+          ...(input.priority && { priority: { name: input.priority } }),
+          ...(input.assignee && { assignee: { accountId: input.assignee } }),
+          ...(input.labels?.length > 0 && { labels: input.labels }),
+        },
+      }
+
+      try {
+        apiMetrics.requests.add(1, { service: 'jira', operation: 'createTicket' })
+        const result = await this.client.post('/issue', issueData)
+
+        jiraMetrics.ticketsCreated.add(1, { project: this.projectKey, issue_type: input.issueType || 'Task' })
+        apiMetrics.requestDuration.record(Date.now() - startTime, { service: 'jira', operation: 'createTicket' })
+
+        span.setAttribute('jira.issue_key', result.key)
+        log(`Jira ticket created: ${result.key}`, 'INFO', { issueKey: result.key, project: this.projectKey })
+
+        return result
+      } catch (error) {
+        apiMetrics.errors.add(1, { service: 'jira', operation: 'createTicket', error_type: error.name })
+        log(`Failed to create Jira ticket: ${error.message}`, 'ERROR', { error: error.stack })
+        throw error
+      }
+    })
   }
 
   /**
@@ -57,7 +82,23 @@ export class JiraService {
    * @param {string} issueKey - Issue key
    */
   async getIssue(issueKey) {
-    return this.client.get(`/issue/${issueKey}`)
+    return withSpan('jira.getIssue', async (span) => {
+      const startTime = Date.now()
+      span.setAttribute('jira.issue_key', issueKey)
+
+      try {
+        apiMetrics.requests.add(1, { service: 'jira', operation: 'getIssue' })
+        const result = await this.client.get(`/issue/${issueKey}`)
+
+        jiraMetrics.ticketsViewed.add(1, { project: this.projectKey })
+        apiMetrics.requestDuration.record(Date.now() - startTime, { service: 'jira', operation: 'getIssue' })
+
+        return result
+      } catch (error) {
+        apiMetrics.errors.add(1, { service: 'jira', operation: 'getIssue', error_type: error.name })
+        throw error
+      }
+    })
   }
 
   /**
@@ -67,9 +108,29 @@ export class JiraService {
    * @param {number} [maxResults=10]
    */
   async searchIssues(jql, maxResults = 10) {
-    return this.client.post('/search/jql', {
-      jql,
-      maxResults,
+    return withSpan('jira.searchIssues', async (span) => {
+      const startTime = Date.now()
+      span.setAttributes({
+        'jira.jql': jql,
+        'jira.max_results': maxResults,
+      })
+
+      try {
+        apiMetrics.requests.add(1, { service: 'jira', operation: 'searchIssues' })
+        const result = await this.client.post('/search/jql', {
+          jql,
+          maxResults,
+        })
+
+        jiraMetrics.searchesPerformed.add(1, { project: this.projectKey })
+        apiMetrics.requestDuration.record(Date.now() - startTime, { service: 'jira', operation: 'searchIssues' })
+        span.setAttribute('jira.results_count', result.issues?.length || 0)
+
+        return result
+      } catch (error) {
+        apiMetrics.errors.add(1, { service: 'jira', operation: 'searchIssues', error_type: error.name })
+        throw error
+      }
     })
   }
 

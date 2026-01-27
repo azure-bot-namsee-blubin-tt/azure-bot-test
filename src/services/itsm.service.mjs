@@ -3,6 +3,7 @@
  * Uses common ApiClient for HTTP requests
  */
 import { createBasicAuthClient, ApiClient } from '../common/services/index.mjs'
+import { withSpan, itsmMetrics, apiMetrics, log } from '../telemetry/index.mjs'
 
 /**
  * ITSMService class for Jira Service Management operations
@@ -81,8 +82,19 @@ export class ITSMService {
    * @returns {Promise<object[]>} Array of service desk objects
    */
   async getServiceDesks() {
-    const result = await this.serviceDeskClient.get('/servicedesk')
-    return result.values || []
+    return withSpan('itsm.getServiceDesks', async (span) => {
+      const startTime = Date.now()
+      try {
+        apiMetrics.requests.add(1, { service: 'itsm', operation: 'getServiceDesks' })
+        const result = await this.serviceDeskClient.get('/servicedesk')
+        apiMetrics.requestDuration.record(Date.now() - startTime, { service: 'itsm', operation: 'getServiceDesks' })
+        span.setAttribute('itsm.service_desk_count', result.values?.length || 0)
+        return result.values || []
+      } catch (error) {
+        apiMetrics.errors.add(1, { service: 'itsm', operation: 'getServiceDesks', error_type: error.name })
+        throw error
+      }
+    })
   }
 
   /**
@@ -155,8 +167,20 @@ export class ITSMService {
    * @returns {Promise<object[]>} Array of request type objects
    */
   async getRequestTypes(serviceDeskId) {
-    const result = await this.serviceDeskClient.get(`/servicedesk/${serviceDeskId}/requesttype`)
-    return result.values || []
+    return withSpan('itsm.getRequestTypes', async (span) => {
+      const startTime = Date.now()
+      span.setAttribute('itsm.service_desk_id', serviceDeskId)
+      try {
+        apiMetrics.requests.add(1, { service: 'itsm', operation: 'getRequestTypes' })
+        const result = await this.serviceDeskClient.get(`/servicedesk/${serviceDeskId}/requesttype`)
+        apiMetrics.requestDuration.record(Date.now() - startTime, { service: 'itsm', operation: 'getRequestTypes' })
+        span.setAttribute('itsm.request_type_count', result.values?.length || 0)
+        return result.values || []
+      } catch (error) {
+        apiMetrics.errors.add(1, { service: 'itsm', operation: 'getRequestTypes', error_type: error.name })
+        throw error
+      }
+    })
   }
 
   /**
@@ -779,21 +803,51 @@ export class ITSMService {
    * @param {formAnswers} input.formAnswers - The form answers object
    */
   async createRequestWithForm(input, formAnswers = null) {
-    const requestData = {
-      serviceDeskId: input.serviceDeskId,
-      requestTypeId: input.requestTypeId,
-      requestFieldValues: input.requestFieldValues,
-      ...(input.raiseOnBehalfOf && { raiseOnBehalfOf: input.raiseOnBehalfOf }),
-      ...(input.requestParticipants && { requestParticipants: input.requestParticipants }),
-    }
+    return withSpan('itsm.createRequestWithForm', async (span) => {
+      const startTime = Date.now()
+      span.setAttributes({
+        'itsm.service_desk_id': input.serviceDeskId,
+        'itsm.request_type_id': input.requestTypeId,
+        'itsm.has_form_answers': !!formAnswers,
+      })
 
-    if (formAnswers) {
-      requestData.form = {
-        answers: formAnswers,
+      const requestData = {
+        serviceDeskId: input.serviceDeskId,
+        requestTypeId: input.requestTypeId,
+        requestFieldValues: input.requestFieldValues,
+        ...(input.raiseOnBehalfOf && { raiseOnBehalfOf: input.raiseOnBehalfOf }),
+        ...(input.requestParticipants && { requestParticipants: input.requestParticipants }),
       }
-    }
 
-    return this.serviceDeskClient.post('/request', requestData)
+      if (formAnswers) {
+        requestData.form = {
+          answers: formAnswers,
+        }
+      }
+
+      try {
+        apiMetrics.requests.add(1, { service: 'itsm', operation: 'createRequest' })
+        const result = await this.serviceDeskClient.post('/request', requestData)
+
+        itsmMetrics.requestsCreated.add(1, {
+          service_desk_id: input.serviceDeskId,
+          request_type_id: input.requestTypeId,
+        })
+        apiMetrics.requestDuration.record(Date.now() - startTime, { service: 'itsm', operation: 'createRequest' })
+
+        span.setAttribute('itsm.issue_key', result.issueKey || result.key)
+        log(`ITSM request created: ${result.issueKey || result.key}`, 'INFO', {
+          issueKey: result.issueKey || result.key,
+          serviceDeskId: input.serviceDeskId,
+        })
+
+        return result
+      } catch (error) {
+        apiMetrics.errors.add(1, { service: 'itsm', operation: 'createRequest', error_type: error.name })
+        log(`Failed to create ITSM request: ${error.message}`, 'ERROR', { error: error.stack })
+        throw error
+      }
+    })
   }
 }
 

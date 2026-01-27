@@ -25,6 +25,16 @@ export const config = {
     clientSecret: process.env.clientSecret,
     tenantId: process.env.tenantId,
   },
+
+  // OpenTelemetry configuration
+  telemetry: {
+    enabled: process.env.OTEL_ENABLED !== 'false',
+    serviceName: process.env.OTEL_SERVICE_NAME || 'azure-bot',
+    serviceVersion: process.env.OTEL_SERVICE_VERSION || '1.0.0',
+    environment: process.env.OTEL_ENVIRONMENT || 'development',
+    otlpEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318',
+    metricExportInterval: parseInt(process.env.OTEL_METRIC_EXPORT_INTERVAL || '60000', 10),
+  },
 }
 
 /**
