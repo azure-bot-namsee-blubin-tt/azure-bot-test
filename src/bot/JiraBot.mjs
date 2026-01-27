@@ -8,7 +8,8 @@ import { createITSMServiceFromEnv } from '../services/itsm.service.mjs'
 import { getState, deleteState } from '../state/conversation.mjs'
 import { createJiraHandlers } from '../components/jira/index.mjs'
 import { createITSMHandlers } from '../components/itsm/index.mjs'
-import { wrapContextForChannel } from '../utils/helpers.mjs'
+import { wrapContextForChannel } from '../utils/index.mjs'
+import { welcomeMessage } from './templates.mjs'
 
 export class JiraBot extends AgentApplication {
   constructor() {
@@ -42,60 +43,8 @@ export class JiraBot extends AgentApplication {
   }
 
   _welcome = async context => {
-    // Wrap context for channel-specific formatting (handles Telegram vs Teams)
     const wrappedContext = wrapContextForChannel(context)
-
-    // Use HTML format - wrapper will convert to plain text for Telegram
-const welcomeMessage = [
-  "<div style='font-family: sans-serif; max-width: 500px;'>",
-  "  <h2 style='margin-bottom: 10px;'>👋 Welcome!</h2>",
-  "  <p>I can help you with <strong>JIRA</strong> tickets and <strong>ITSM</strong> requests.</p>",
-  "  <table style='width: 100%; border-collapse: collapse; margin-top: 15px;'>",
-  "    <thead>",
-  "      <tr style='border-bottom: 2px solid #eee;'>",
-  "        <th style='text-align: left; padding: 8px;'>Category</th>",
-  "        <th style='text-align: left; padding: 8px;'>Command</th>",
-  "        <th style='text-align: left; padding: 8px;'>Action</th>",
-  "      </tr>",
-  "    </thead>",
-  "    <tbody>",
-  "      <tr>",
-  "        <td rowspan='4' style='vertical-align: top; padding: 10px 8px; font-weight: bold;'>📝 JIRA</td>",
-  "        <td style='padding: 5px 8px;'><code>create</code></td>",
-  "        <td style='padding: 5px 8px;'>Create a new ticket</td>",
-  "      </tr>",
-  "      <tr>",
-  "        <td style='padding: 5px 8px;'><code>my tickets</code></td>",
-  "        <td style='padding: 5px 8px;'>View assigned tickets</td>",
-  "      </tr>",
-  "      <tr>",
-  "        <td style='padding: 5px 8px;'><code>search &lt;q&gt;</code></td>",
-  "        <td style='padding: 5px 8px;'>Search for tickets</td>",
-  "      </tr>",
-  "      <tr style='border-bottom: 1px solid #eee;'>",
-  "        <td style='padding: 5px 8px;'><code>view &lt;id&gt;</code></td>",
-  "        <td style='padding: 5px 8px;'>View details</td>",
-  "      </tr>",
-  "      <tr>",
-  "        <td rowspan='3' style='vertical-align: top; padding: 10px 8px; font-weight: bold;'>⚙ ITSM</td>",
-  "        <td style='padding: 5px 8px;'><code>create</code></td>",
-  "        <td style='padding: 5px 8px;'>New ITSM request</td>",
-  "      </tr>",
-  "      <tr>",
-  "        <td style='padding: 5px 8px;'><code>forms</code></td>",
-  "        <td style='padding: 5px 8px;'>Show templates</td>",
-  "      </tr>",
-  "      <tr>",
-  "        <td style='padding: 5px 8px;'><code>debug</code></td>",
-  "        <td style='padding: 5px 8px;'>Field info</td>",
-  "      </tr>",
-  "    </tbody>",
-  "  </table>",
-  "  <p style='margin-top: 20px; font-size: 0.9em;'>Type <b><code>help</code></b> to see this table again.</p>",
-  "</div>"
-].join('\n');
-
-    await wrappedContext.sendActivity(welcomeMessage)
+    await wrappedContext.sendActivity(welcomeMessage())
   }
 
   _handleMessage = async context => {

@@ -6,82 +6,69 @@ import {
   sendTyping,
   getFieldTypeLabel,
   getFormFieldTypeLabel,
+  createMessage,
+  ICONS,
+  bold,
+  italic,
+  code,
+  fieldWithType,
+  selectionList,
 } from '../../utils/index.mjs'
 
-/**
- * Show service desk selection
- */
+// ============================================
+// Service Desk Selection
+// ============================================
+
 export async function showServiceDesks(context, state) {
-  let msg = `<b>Create ITSM Request</b><br/><br/>`
-  msg += `<b>Step 1/5: Select Service Desk</b><br/><br/>`
+  const msg = createMessage()
+    .addHeader('Create ITSM Request')
+    .addBreak()
+    .addStepHeader(1, 5, 'Select Service Desk')
+    .addBreak()
+    .add(selectionList(state.serviceDesks, d => `${d.projectName} (${d.projectKey})`))
+    .addBreak(2)
+    .addNote(`Type number to select. ${code('cancel')} to abort.`)
+    .build()
 
-  state.serviceDesks.forEach((d, i) => {
-    msg += `<b>${i + 1}.</b> ${d.projectName} (${d.projectKey})<br/>`
-  })
-
-  msg += `<br/><i>Type number to select. <code>cancel</code> to abort.</i>`
   await context.sendActivity(msg)
 }
 
-/**
- * Show portal groups (Contact us about)
- */
+// ============================================
+// Portal Groups Selection
+// ============================================
+
 export async function showPortalGroups(context, state) {
-  let msg = `<b>Step 2/5: Contact us about</b><br/>`
-  msg += `<i>Service Desk: ${state.selectedServiceDesk.projectName}</i><br/><br/>`
+  const msg = createMessage()
+    .addStepHeader(2, 5, 'Contact us about', `Service Desk: ${state.selectedServiceDesk.projectName}`)
+    .addBreak()
+    .add(selectionList(state.portalGroups, g => g.name))
+    .addBreak(2)
+    .addNote(`Type number to select. ${code('back')} to go back.`)
+    .build()
 
-  state.portalGroups.forEach((g, i) => {
-    msg += `<b>${i + 1}.</b> ${g.name}<br/>`
-  })
-
-  msg += `<br/><i>Type number to select. <code>back</code> to go back.</i>`
   await context.sendActivity(msg)
 }
 
-/**
- * Show request types with fields preview
- */
+// ============================================
+// Request Types Selection
+// ============================================
+
 export async function showRequestTypes(context, state, itsmService) {
   const types = state.filteredRequestTypes || []
-  let msg = `<b>Step 3/5: What can we help you with?</b><br/>`
-  msg += `<i>Category: ${state.selectedPortalGroup.name}</i><br/><br/>`
+
+  const msg = createMessage()
+    .addStepHeader(3, 5, 'What can we help you with?', `Category: ${state.selectedPortalGroup.name}`)
+    .addBreak()
 
   if (types.length === 0) {
-    msg += `<i>No request types available for this category.</i><br/>`
+    msg.addNote('No request types available for this category.')
   } else {
-    // Fetch fields and forms in parallel
     await sendTyping(context)
 
-    let allFields = []
-    let allForms = []
+    // Fetch fields and forms in parallel
+    const [allFields, allForms] = await fetchFieldsAndForms(types, state, itsmService)
 
-    try {
-      const fieldsPromises = types.map(t =>
-        itsmService.getPortalFields(state.selectedServiceDesk.id, t.id)
-          .catch(err => {
-            console.log(`Fields error for ${t.id}:`, err.message)
-            return []
-          })
-      )
-
-      const formsPromises = types.map(t =>
-        itsmService.getRequestTypeForm(state.selectedServiceDesk.id, t.id)
-          .catch(err => {
-            console.log(`Form error for ${t.id}:`, err.message)
-            return null
-          })
-      )
-
-      const results = await Promise.all([
-        Promise.all(fieldsPromises),
-        Promise.all(formsPromises),
-      ])
-      allFields = results[0]
-      allForms = results[1]
-    } catch (error) {
-      console.error('Error fetching fields/forms:', error)
-    }
-
+    // Cache results
     state.requestTypeFieldsCache = {}
     state.requestTypeFormsCache = {}
 
@@ -89,223 +76,255 @@ export async function showRequestTypes(context, state, itsmService) {
       const t = types[i]
       const fields = allFields[i]
       const formTemplate = allForms[i]
+
       state.requestTypeFieldsCache[t.id] = fields
       state.requestTypeFormsCache[t.id] = formTemplate
 
-      msg += `<b>${i + 1}. ${t.name}</b><br/>`
-      if (t.description) {
-        msg += `<i>   ${t.description}</i><br/>`
-      }
-
-      if (fields.length > 0) {
-        msg += `   <b>Standard fields:</b><br/>`
-        fields.forEach(f => {
-          const reqMark = f.required ? '<span style="color:red">*</span>' : ''
-          const fieldType = itsmService.getFieldType(f)
-          msg += `   • ${f.name}${reqMark} <i>(${fieldType})</i><br/>`
-        })
-      }
-
-      if (formTemplate) {
-        const formQuestions = itsmService.extractFormQuestions(formTemplate)
-        if (formQuestions.length > 0) {
-          const uniqueFields = []
-          const seenLabels = new Set()
-          for (const q of formQuestions) {
-            if (!seenLabels.has(q.label)) {
-              seenLabels.add(q.label)
-              uniqueFields.push(q)
-            }
-          }
-
-          msg += `   <b>Form: ${formTemplate.name || 'Attached Form'}</b><br/>`
-          uniqueFields.forEach(q => {
-            const reqMark = q.required ? '<span style="color:red">*</span>' : ''
-            const typeLabel = getFormFieldTypeLabel(q.type)
-            msg += `   • ${q.label}${reqMark} <i>(${typeLabel})</i><br/>`
-          })
-        }
-      }
-
-      if (fields.length === 0 && !formTemplate) {
-        msg += `   <i>No fields found</i><br/>`
-      }
-      msg += `<br/>`
+      msg.add(formatRequestTypeItem(i + 1, t, fields, formTemplate, itsmService))
+      msg.addBreak()
     }
   }
 
-  msg += `<i>Type number to select. <code>back</code> to go back.</i><br/>`
-  msg += `<i><span style="color:red">*</span> = Required field</i>`
-  await context.sendActivity(msg)
+  msg.addNote(`Type number to select. ${code('back')} to go back.`)
+    .addLine(`${ICONS.required} = Required field`)
+
+  await context.sendActivity(msg.build())
 }
 
-/**
- * Show form overview before collecting fields
- */
+async function fetchFieldsAndForms(types, state, itsmService) {
+  try {
+    const fieldsPromises = types.map(t =>
+      itsmService.getPortalFields(state.selectedServiceDesk.id, t.id).catch(() => [])
+    )
+    const formsPromises = types.map(t =>
+      itsmService.getRequestTypeForm(state.selectedServiceDesk.id, t.id).catch(() => null)
+    )
+
+    return await Promise.all([
+      Promise.all(fieldsPromises),
+      Promise.all(formsPromises),
+    ])
+  } catch (error) {
+    console.error('Error fetching fields/forms:', error)
+    return [[], []]
+  }
+}
+
+function formatRequestTypeItem(index, type, fields, formTemplate, itsmService) {
+  const parts = [`${bold(`${index}. ${type.name}`)}<br/>`]
+
+  if (type.description) {
+    parts.push(`${italic(`   ${type.description}`)}<br/>`)
+  }
+
+  if (fields.length > 0) {
+    parts.push(`   ${bold('Standard fields:')}<br/>`)
+    fields.forEach(f => {
+      const fieldType = itsmService.getFieldType(f)
+      parts.push(`   ${fieldWithType(f.name, fieldType, f.required)}<br/>`)
+    })
+  }
+
+  if (formTemplate) {
+    const formQuestions = itsmService.extractFormQuestions(formTemplate)
+    if (formQuestions.length > 0) {
+      const uniqueFields = getUniqueFields(formQuestions)
+      parts.push(`   ${bold(`Form: ${formTemplate.name || 'Attached Form'}`)}<br/>`)
+      uniqueFields.forEach(q => {
+        const typeLabel = getFormFieldTypeLabel(q.type)
+        parts.push(`   ${fieldWithType(q.label, typeLabel, q.required)}<br/>`)
+      })
+    }
+  }
+
+  if (fields.length === 0 && !formTemplate) {
+    parts.push(`   ${italic('No fields found')}<br/>`)
+  }
+
+  return parts.join('')
+}
+
+function getUniqueFields(formQuestions) {
+  const seen = new Set()
+  return formQuestions.filter(q => {
+    if (seen.has(q.label)) return false
+    seen.add(q.label)
+    return true
+  })
+}
+
+// ============================================
+// Form Overview
+// ============================================
+
 export async function showFormOverview(context, state, itsmService) {
   const fc = state.fieldCollection
   const requiredCount = fc.fields.filter(f => f.required).length
   const optionalCount = fc.fields.length - requiredCount
 
-  let msg = `<b>Step 4/5: Form Fields</b><br/>`
-  msg += `<i>Request Type: ${state.selectedRequestType.name}</i><br/>`
-  msg += `━━━━━━━━━━━━━━━━━━━━<br/><br/>`
+  const msg = createMessage()
+    .addStepHeader(4, 5, 'Form Fields', `Request Type: ${state.selectedRequestType.name}`)
+    .addDivider()
+    .addBreak()
+    .addLine(bold('Fields to fill:'))
 
-  msg += `<b>Fields to fill:</b><br/>`
   fc.fields.forEach((f, i) => {
-    const reqMark = f.required ? ' <span style="color:red"><b>*</b></span>' : ''
     const fieldType = itsmService.getFieldType(f)
     const typeLabel = getFieldTypeLabel(fieldType)
-    msg += `<b>${i + 1}.</b> ${f.name}${reqMark} <i>(${typeLabel})</i><br/>`
+    msg.addLine(`${bold(`${i + 1}.`)} ${f.name}${f.required ? ` ${ICONS.requiredBold}` : ''} ${italic(`(${typeLabel})`)}`)
   })
 
-  msg += `<br/>━━━━━━━━━━━━━━━━━━━━<br/>`
-  msg += `<span style="color:red"><b>*</b></span> = Required field<br/>`
-  msg += `Total: <b>${requiredCount}</b> required, <b>${optionalCount}</b> optional<br/><br/>`
+  msg.addBreak()
+    .addDivider()
+    .addLine(`${ICONS.requiredBold} = Required field`)
+    .addLine(`Total: ${bold(requiredCount)} required, ${bold(optionalCount)} optional`)
+    .addBreak()
+    .addNote("Let's fill in the fields one by one...")
 
-  msg += `<i>Let's fill in the fields one by one...</i>`
-
-  await context.sendActivity(msg)
+  await context.sendActivity(msg.build())
 }
 
-/**
- * Show current field to fill
- */
+// ============================================
+// Field Input
+// ============================================
+
 export async function showField(context, state, itsmService) {
   const fc = state.fieldCollection
   const field = fc.fields[fc.currentFieldIndex]
   const fieldType = itsmService.getFieldType(field)
-  const progress = `${fc.currentFieldIndex + 1}/${fc.fields.length}`
+  const progress = `[${fc.currentFieldIndex + 1}/${fc.fields.length}]`
 
-  // Header with progress
-  let msg = `<b>Step 4/5: Fill Form</b> <i>[${progress}]</i><br/>`
-  msg += `━━━━━━━━━━━━━━━━━━━━<br/><br/>`
+  const msg = createMessage()
+    .addLine(`${bold('Step 4/5: Fill Form')} ${italic(progress)}`)
+    .addDivider()
+    .addBreak()
 
   // Field name with required indicator
   if (field.required) {
-    msg += `<b>${field.name}</b> <span style="color:red"><b>*</b></span><br/>`
-    msg += `<i style="color:red">This field is required</i><br/>`
+    msg.addLine(`${bold(field.name)} ${ICONS.requiredBold}`)
+      .addLine(italic('<span style="color:red">This field is required</span>'))
   } else {
-    msg += `<b>${field.name}</b> <i>(Optional)</i><br/>`
+    msg.addLine(`${bold(field.name)} ${italic('(Optional)')}`)
   }
 
-  // Field description
   if (field.description) {
-    msg += `<i>${field.description}</i><br/>`
+    msg.addLine(italic(field.description))
   }
 
-  msg += `<br/>`
+  msg.addBreak()
 
   // Field type specific instructions
-  switch (fieldType) {
-    case 'select':
-      msg += `<b>Select one option:</b><br/>`
-      field.validValues?.forEach((v, i) => {
-        msg += `  <b>${i + 1}.</b> ${v.name || v.value || v.id}<br/>`
-      })
-      msg += `<br/><i>Type the number (1-${field.validValues?.length || 0}) to select.</i>`
-      break
+  msg.add(getFieldInstructions(field, fieldType))
 
-    case 'multiselect':
-      msg += `<b>Select one or more:</b><br/>`
-      field.validValues?.forEach((v, i) => {
-        msg += `  <b>${i + 1}.</b> ${v.name || v.value || v.id}<br/>`
-      })
-      msg += `<br/><i>Type numbers separated by commas (e.g., 1,3,5).</i>`
-      break
+  // Footer commands
+  msg.addBreak(2)
+    .addDivider()
 
-    case 'date':
-      msg += `<b>Format:</b> YYYY-MM-DD<br/>`
-      msg += `<i>Example: 2024-01-15</i>`
-      break
-
-    case 'datetime':
-      msg += `<b>Format:</b> YYYY-MM-DD HH:MM<br/>`
-      msg += `<i>Example: 2024-01-15 14:30</i>`
-      break
-
-    case 'user':
-      msg += `<i>Enter user email address.</i>`
-      break
-
-    case 'number':
-      msg += `<i>Enter a number.</i>`
-      break
-
-    case 'textarea':
-      msg += `<i>Enter your text below:</i>`
-      break
-
-    case 'attachment':
-      msg += `<i>Attachments are not supported in chat.</i><br/>`
-      msg += `<i>Type <code>skip</code> to continue.</i>`
-      break
-
-    default:
-      msg += `<i>Enter your value:</i>`
-  }
-
-  msg += `<br/><br/>━━━━━━━━━━━━━━━━━━━━<br/>`
   if (!field.required) {
-    msg += `<code>skip</code> - Skip this field<br/>`
+    msg.addLine(`${code('skip')} - Skip this field`)
   }
-  msg += `<code>back</code> - Previous field`
+  msg.add(`${code('back')} - Previous field`)
 
-  await context.sendActivity(msg)
+  await context.sendActivity(msg.build())
 }
 
-/**
- * Show confirmation before submitting
- */
+function getFieldInstructions(field, fieldType) {
+  const formatOptions = (values) =>
+    values?.map((v, i) => `  ${bold(`${i + 1}.`)} ${v.name || v.value || v.id}`).join('<br/>')
+
+  const instructions = {
+    select: () => [
+      `${bold('Select one option:')}`,
+      formatOptions(field.validValues),
+      '',
+      italic(`Type the number (1-${field.validValues?.length || 0}) to select.`)
+    ].join('<br/>'),
+
+    multiselect: () => [
+      `${bold('Select one or more:')}`,
+      formatOptions(field.validValues),
+      '',
+      italic('Type numbers separated by commas (e.g., 1,3,5).')
+    ].join('<br/>'),
+
+    date: () => `${bold('Format:')} YYYY-MM-DD<br/>${italic('Example: 2024-01-15')}`,
+    datetime: () => `${bold('Format:')} YYYY-MM-DD HH:MM<br/>${italic('Example: 2024-01-15 14:30')}`,
+    user: () => italic('Enter user email address.'),
+    number: () => italic('Enter a number.'),
+    textarea: () => italic('Enter your text below:'),
+    attachment: () => `${italic('Attachments are not supported in chat.')}<br/>${italic(`Type ${code('skip')} to continue.`)}`,
+  }
+
+  return instructions[fieldType]?.() || italic('Enter your value:')
+}
+
+// ============================================
+// Confirmation
+// ============================================
+
 export async function showConfirmation(context, state, itsmService) {
   const { selectedServiceDesk, selectedPortalGroup, selectedRequestType, fieldCollection } = state
 
-  let msg = `<b>Step 5/5: Review Request</b><br/>`
-  msg += `━━━━━━━━━━━━━━━━━━━━<br/><br/>`
-
-  msg += `<b>Service Desk:</b> ${selectedServiceDesk.projectName}<br/>`
-  msg += `<b>Category:</b> ${selectedPortalGroup.name}<br/>`
-  msg += `<b>Request Type:</b> ${selectedRequestType.name}<br/>`
+  const msg = createMessage()
+    .addStepHeader(5, 5, 'Review Request')
+    .addDivider()
+    .addBreak()
+    .addLine(`${bold('Service Desk:')} ${selectedServiceDesk.projectName}`)
+    .addLine(`${bold('Category:')} ${selectedPortalGroup.name}`)
+    .addLine(`${bold('Request Type:')} ${selectedRequestType.name}`)
 
   if (fieldCollection?.fields.length > 0) {
-    msg += `<br/><b>Form Values:</b><br/>`
+    msg.addBreak()
+      .addLine(bold('Form Values:'))
+
     for (const field of fieldCollection.fields) {
-      let value, display
-      const reqMark = field.required ? '<span style="color:red">*</span>' : ''
+      const { value, display } = getFieldDisplayValue(field, fieldCollection, itsmService)
+      const reqMark = field.required ? ICONS.required : ''
 
-      if (field.source === 'form') {
-        const formAnswer = fieldCollection.formAnswers?.[field.formQuestionId]
-        value = formAnswer?.text || formAnswer?.choices?.[0] || null
-
-        if (formAnswer?.choices && field.validValues?.length > 0) {
-          const choiceId = formAnswer.choices[0]
-          const choice = field.validValues.find(v => v.id === choiceId && v.id !== '__other__')
-          display = choice?.name || choiceId
-        } else if (formAnswer?.text) {
-          display = formAnswer.text
-        } else {
-          display = value || '(empty)'
-        }
+      if (field.required && !value) {
+        msg.addLine(`• ${bold(field.name)}${reqMark}: <span style="color:red">(empty - required!)</span>`)
       } else {
-        value = fieldCollection.collectedValues[field.fieldId]
-        display = itsmService.getDisplayValue(field, value)
-      }
-
-      if (field.required && (value === null || value === undefined || value === '')) {
-        msg += `• <b>${field.name}</b>${reqMark}: <span style="color:red">(empty - required!)</span><br/>`
-      } else {
-        msg += `• <b>${field.name}</b>${reqMark}: ${display}<br/>`
+        msg.addLine(`• ${bold(field.name)}${reqMark}: ${display}`)
       }
     }
-    msg += `<br/><i><span style="color:red">*</span> = Required field</i>`
+
+    msg.addBreak()
+      .addNote(`${ICONS.required} = Required field`)
   }
 
-  msg += `<br/><br/>━━━━━━━━━━━━━━━━━━━━<br/>`
-  msg += `<code>yes</code> - Submit request<br/>`
-  msg += `<code>no</code> - Cancel<br/>`
-  msg += `<code>back</code> - Edit fields`
+  msg.addBreak(2)
+    .addDivider()
+    .addCommands([
+      ['yes', 'Submit request'],
+      ['no', 'Cancel'],
+      ['back', 'Edit fields'],
+    ])
 
-  await context.sendActivity(msg)
+  await context.sendActivity(msg.build())
+}
+
+function getFieldDisplayValue(field, fieldCollection, itsmService) {
+  let value, display
+
+  if (field.source === 'form') {
+    const formAnswer = fieldCollection.formAnswers?.[field.formQuestionId]
+    value = formAnswer?.text || formAnswer?.choices?.[0] || null
+
+    if (formAnswer?.choices && field.validValues?.length > 0) {
+      const choiceId = formAnswer.choices[0]
+      const choice = field.validValues.find(v => v.id === choiceId && v.id !== '__other__')
+      display = choice?.name || choiceId
+    } else if (formAnswer?.text) {
+      display = formAnswer.text
+    } else {
+      display = value || '(empty)'
+    }
+  } else {
+    value = fieldCollection.collectedValues[field.fieldId]
+    display = itsmService.getDisplayValue(field, value)
+  }
+
+  return { value, display }
 }
 
 // Re-export utilities for backwards compatibility

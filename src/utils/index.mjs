@@ -4,3 +4,4 @@
  */
 
 export * from './helpers.mjs'
+export * from './html.mjs'

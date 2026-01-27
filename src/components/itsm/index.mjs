@@ -13,11 +13,22 @@ import {
   sendTyping,
 } from './display.mjs'
 import { handleField, prepareFieldsForCollection } from './fieldHandlers.mjs'
-import { selectFromList } from '../../utils/index.mjs'
+import {
+  selectFromList,
+  createTypingAnimation,
+  formatElapsedTime,
+  createMessage,
+  bold,
+  italic,
+  code,
+  link,
+  ICONS,
+} from '../../utils/index.mjs'
 
-/**
- * Create ITSM handlers bound to bot instance
- */
+// ============================================
+// Public API
+// ============================================
+
 export function createITSMHandlers(bot) {
   return {
     startRequestCreation: (ctx, convId) => startRequestCreation(bot, ctx, convId),
@@ -268,71 +279,32 @@ async function handleConfirm(bot, context, text, state, conversationId) {
     deleteState(conversationId)
     await context.sendActivity('Request cancelled.')
   } else {
-    await context.sendActivity('<i>Type <code>yes</code>, <code>no</code>, or <code>back</code>.</i>')
+    await context.sendActivity(italic(`Type ${code('yes')}, ${code('no')}, or ${code('back')}.`))
   }
 }
 
 async function createRequest(bot, context, state, conversationId) {
   const fc = state.fieldCollection
 
-  const missingRequired = []
-  for (const field of (fc?.fields || [])) {
-    if (field.required) {
-      let value
-      if (field.source === 'form') {
-        const formAnswer = fc.formAnswers?.[field.formQuestionId]
-        value = formAnswer?.text || formAnswer?.choices?.[0]
-      } else {
-        value = fc.collectedValues[field.fieldId]
-      }
-      if (value === null || value === undefined || value === '') {
-        missingRequired.push(field.name)
-      }
-    }
-  }
-
+  // Validate required fields
+  const missingRequired = getMissingRequiredFields(fc)
   if (missingRequired.length > 0) {
-    let msg = `<b>Cannot submit - missing required fields:</b><br/><br/>`
-    missingRequired.forEach(name => {
-      msg += `• ${name}<br/>`
-    })
-    msg += `<br/><i>Type <code>back</code> to edit the form.</i>`
+    const msg = createMessage()
+      .addLine(bold('Cannot submit - missing required fields:'))
+      .addBreak()
+      .addBulletList(missingRequired)
+      .addBreak()
+      .addNote(`Type ${code('back')} to edit the form.`)
+      .build()
     await context.sendActivity(msg)
     return
   }
 
   const startTime = Date.now()
-  let typingInterval = null
-
-  const startTypingAnimation = () => {
-    sendTyping(context)
-    typingInterval = setInterval(() => {
-      sendTyping(context)
-    }, 3000)
-  }
-
-  const stopTypingAnimation = () => {
-    if (typingInterval) {
-      clearInterval(typingInterval)
-      typingInterval = null
-    }
-  }
-
-  const getElapsedTime = () => {
-    const elapsed = (Date.now() - startTime) / 1000
-    return elapsed < 1 ? `${Math.round(elapsed * 1000)}ms` : `${elapsed.toFixed(1)}s`
-  }
+  const typing = createTypingAnimation(context)
 
   try {
-    startTypingAnimation()
-
-    const fieldValues = {}
-    for (const [key, value] of Object.entries(fc?.collectedValues || {})) {
-      if (value !== null && value !== undefined && value !== '') {
-        fieldValues[key] = value
-      }
-    }
-
+    const fieldValues = getCollectedFieldValues(fc)
     const result = await bot.itsmService.createRequest({
       serviceDeskId: state.selectedServiceDesk.id,
       requestTypeId: state.selectedRequestType.id,
@@ -343,78 +315,134 @@ async function createRequest(bot, context, state, conversationId) {
     const url = bot.itsmService.getPortalUrl(issueKey)
     const summary = fieldValues.summary || state.selectedRequestType.name
 
-    let msg = `<b>Request Created!</b><br/><br/>`
-    msg += `<b>${issueKey}:</b> ${summary}<br/>`
+    const msg = createMessage()
+      .addLine(`${ICONS.success} ${bold('Request Created!')}`)
+      .addBreak()
+      .addLine(`${bold(issueKey)}: ${summary}`)
 
+    // Handle form attachment if exists
     if (state.formTemplate) {
-      try {
-        const issueId = result.issueId
-
-        await new Promise(resolve => setTimeout(resolve, 1500))
-
-        const formTemplateId = state.formTemplate.id ||
-                               state.formTemplate.templateId ||
-                               state.formTemplate.formTemplate?.id
-
-        if (formTemplateId) {
-          const attachedForm = await bot.itsmService.attachFormToIssue(issueId, formTemplateId)
-
-          if (attachedForm?.id) {
-            await bot.itsmService.setFormExternal(issueId, attachedForm.id)
-
-            const validAnswers = {}
-
-            for (const [key, value] of Object.entries(fc.formAnswers || {})) {
-              if (value !== null && value !== undefined) {
-                validAnswers[key] = value
-              }
-            }
-
-            for (const field of fc.fields || []) {
-              if (field.source === 'portal' && field.formQuestionId) {
-                const portalValue = fc.collectedValues[field.fieldId]
-                if (portalValue !== null && portalValue !== undefined && portalValue !== '') {
-                  validAnswers[field.formQuestionId] = { text: String(portalValue) }
-                }
-              }
-            }
-
-            console.log('📋 Saving form answers:', JSON.stringify(validAnswers, null, 2))
-
-            if (Object.keys(validAnswers).length > 0) {
-              await bot.itsmService.saveFormAnswers(issueId, attachedForm.id, validAnswers)
-              msg += `Form attached and filled<br/>`
-            } else {
-              msg += `Form attached<br/>`
-            }
-          }
-        } else {
-          console.log('No form template ID found in:', state.formTemplate)
-          msg += `<i>Form template ID not found.</i><br/>`
-        }
-      } catch (formError) {
-        console.error('Error attaching form:', formError)
-        msg += `<i>Form could not be attached: ${formError.message}</i><br/>`
-        msg += `<i>Please fill the form fields in the portal.</i><br/>`
-      }
+      const formResult = await attachAndFillForm(bot, result, state, fc)
+      msg.addLine(formResult)
     }
 
-    msg += `<br/> <a href="${url}">View in Portal</a>`
-    msg += `<br/><br/><i style="color:gray">Completed in ${getElapsedTime()}</i>`
+    msg.addBreak()
+      .addLine(link('View in Portal', url))
+      .addBreak(2)
+      .add(`<i style="color:gray">Completed in ${formatElapsedTime(startTime)}</i>`)
 
-    stopTypingAnimation()
-    await context.sendActivity(msg)
+    typing.stop()
+    await context.sendActivity(msg.build())
     deleteState(conversationId)
   } catch (error) {
-    stopTypingAnimation()
+    typing.stop()
     console.error('Error creating request:', error)
-    await context.sendActivity(
-      `Failed to create: ${error.message}<br/>` +
-      `<i style="color:gray">Failed after ${getElapsedTime()}</i><br/><br/>` +
-      `<i>Type <code>yes</code> to retry or <code>back</code> to edit.</i>`
-    )
+
+    const errorMsg = createMessage()
+      .addLine(`${ICONS.error} Failed to create: ${error.message}`)
+      .add(`<i style="color:gray">Failed after ${formatElapsedTime(startTime)}</i>`)
+      .addBreak(2)
+      .addNote(`Type ${code('yes')} to retry or ${code('back')} to edit.`)
+      .build()
+
+    await context.sendActivity(errorMsg)
   }
 }
+
+// ============================================
+// Helper Functions
+// ============================================
+
+function getMissingRequiredFields(fc) {
+  const missing = []
+  for (const field of (fc?.fields || [])) {
+    if (field.required) {
+      let value
+      if (field.source === 'form') {
+        const formAnswer = fc.formAnswers?.[field.formQuestionId]
+        value = formAnswer?.text || formAnswer?.choices?.[0]
+      } else {
+        value = fc.collectedValues[field.fieldId]
+      }
+      if (value === null || value === undefined || value === '') {
+        missing.push(field.name)
+      }
+    }
+  }
+  return missing
+}
+
+function getCollectedFieldValues(fc) {
+  const fieldValues = {}
+  for (const [key, value] of Object.entries(fc?.collectedValues || {})) {
+    if (value !== null && value !== undefined && value !== '') {
+      fieldValues[key] = value
+    }
+  }
+  return fieldValues
+}
+
+async function attachAndFillForm(bot, result, state, fc) {
+  try {
+    const issueId = result.issueId
+    await new Promise(resolve => setTimeout(resolve, 1500))
+
+    const formTemplateId = state.formTemplate.id ||
+                           state.formTemplate.templateId ||
+                           state.formTemplate.formTemplate?.id
+
+    if (!formTemplateId) {
+      console.log('No form template ID found in:', state.formTemplate)
+      return italic('Form template ID not found.')
+    }
+
+    const attachedForm = await bot.itsmService.attachFormToIssue(issueId, formTemplateId)
+
+    if (attachedForm?.id) {
+      await bot.itsmService.setFormExternal(issueId, attachedForm.id)
+
+      const validAnswers = buildFormAnswers(fc)
+
+      console.log('📋 Saving form answers:', JSON.stringify(validAnswers, null, 2))
+
+      if (Object.keys(validAnswers).length > 0) {
+        await bot.itsmService.saveFormAnswers(issueId, attachedForm.id, validAnswers)
+        return 'Form attached and filled'
+      }
+      return 'Form attached'
+    }
+
+    return italic('Form could not be attached.')
+  } catch (formError) {
+    console.error('Error attaching form:', formError)
+    return italic(`Form could not be attached: ${formError.message}. Please fill in the portal.`)
+  }
+}
+
+function buildFormAnswers(fc) {
+  const validAnswers = {}
+
+  for (const [key, value] of Object.entries(fc.formAnswers || {})) {
+    if (value !== null && value !== undefined) {
+      validAnswers[key] = value
+    }
+  }
+
+  for (const field of fc.fields || []) {
+    if (field.source === 'portal' && field.formQuestionId) {
+      const portalValue = fc.collectedValues[field.fieldId]
+      if (portalValue !== null && portalValue !== undefined && portalValue !== '') {
+        validAnswers[field.formQuestionId] = { text: String(portalValue) }
+      }
+    }
+  }
+
+  return validAnswers
+}
+
+// ============================================
+// Debug Functions
+// ============================================
 
 async function debugFields(bot, context) {
   if (!bot.itsmService) {
@@ -431,34 +459,38 @@ async function debugFields(bot, context) {
       return
     }
 
-    let msg = `<b>ITSM Debug Info</b><br/>━━━━━━━━━━━━━━━━━━━━<br/><br/>`
+    const msg = createMessage()
+      .addHeader('ITSM Debug Info')
+      .addDivider()
+      .addBreak()
 
     for (const desk of serviceDesks.slice(0, 1)) {
-      msg += `<b>Service Desk:</b> ${desk.projectName} (${desk.projectKey})<br/>`
+      msg.addLine(`${bold('Service Desk:')} ${desk.projectName} (${desk.projectKey})`)
 
       const requestTypes = await bot.itsmService.getRequestTypes(desk.id)
-      msg += `<b>Request Types:</b> ${requestTypes.length}<br/><br/>`
+      msg.addLine(`${bold('Request Types:')} ${requestTypes.length}`)
+        .addBreak()
 
       for (const rt of requestTypes.slice(0, 5)) {
-        msg += `<b>→ ${rt.name}</b><br/>`
+        msg.addLine(`${bold(`→ ${rt.name}`)}`)
 
         const portalFields = await bot.itsmService.getPortalFields(desk.id, rt.id)
-        msg += `   Portal Fields: ${portalFields.length}<br/>`
+        msg.addLine(`   Portal Fields: ${portalFields.length}`)
 
         if (portalFields.length > 0) {
           portalFields.forEach(f => {
-            const req = f.required ? ' <span style="color:red">*</span>' : ''
-            msg += `   • ${f.name}${req}<br/>`
+            const req = f.required ? ` ${ICONS.required}` : ''
+            msg.addLine(`   • ${f.name}${req}`)
           })
         }
-        msg += `<br/>`
+        msg.addBreak()
       }
     }
 
-    msg += `━━━━━━━━━━━━━━━━━━━━<br/>`
-    msg += `<i><span style="color:red">*</span> = Required</i>`
+    msg.addDivider()
+      .addNote(`${ICONS.required} = Required`)
 
-    await context.sendActivity(msg)
+    await context.sendActivity(msg.build())
   } catch (error) {
     console.error('Debug error:', error)
     await context.sendActivity(`Debug error: ${error.message}`)
@@ -474,75 +506,86 @@ async function showForms(bot, context, projectKey) {
   try {
     await sendTyping(context)
 
-    let msg = `<b>📋 Forms API Test</b><br/>━━━━━━━━━━━━━━━━━━━━<br/><br/>`
+    const msg = createMessage()
+      .addHeader('📋 Forms API Test')
+      .addDivider()
+      .addBreak()
 
     try {
       const cloudId = await bot.itsmService.getCloudId()
-      msg += `<b>Cloud ID:</b> ${cloudId}<br/><br/>`
+      msg.addLine(`${bold('Cloud ID:')} ${cloudId}`)
     } catch (error) {
-      msg += `<b>Cloud ID:</b> ${error.message}<br/><br/>`
+      msg.addLine(`${bold('Cloud ID:')} ${error.message}`)
     }
 
-    msg += `<b>Form Templates for ${projectKey}:</b><br/>`
+    msg.addBreak()
+      .addLine(`${bold(`Form Templates for ${projectKey}:`)}`)
+
     try {
       const templates = await bot.itsmService.getFormTemplates(projectKey)
       if (templates.length === 0) {
-        msg += `<i>No form templates found</i><br/>`
+        msg.addNote('No form templates found')
       } else {
         templates.forEach((t, i) => {
-          msg += `${i + 1}. <b>${t.name}</b> (ID: ${t.id})<br/>`
-          if (t.description) msg += `   <i>${t.description}</i><br/>`
+          msg.addLine(`${i + 1}. ${bold(t.name)} (ID: ${t.id})`)
+          if (t.description) msg.addNote(`   ${t.description}`)
         })
       }
     } catch (error) {
-      msg += `❌ Error: ${error.message}<br/>`
+      msg.addLine(`${ICONS.error} Error: ${error.message}`)
     }
 
-    msg += `<br/>━━━━━━━━━━━━━━━━━━━━<br/>`
-    msg += `<i>Use: itsm forms &lt;PROJECT_KEY&gt; to check other projects</i>`
+    msg.addBreak()
+      .addDivider()
+      .addNote('Use: itsm forms <PROJECT_KEY> to check other projects')
 
-    await context.sendActivity(msg)
+    await context.sendActivity(msg.build())
   } catch (error) {
     console.error('Forms API error:', error)
-    await context.sendActivity(` Forms API error: ${error.message}`)
+    await context.sendActivity(`${ICONS.error} Forms API error: ${error.message}`)
   }
 }
 
 async function testAttachForm(bot, context, issueKey, formTemplateId) {
   if (!bot.itsmService) {
-    await context.sendActivity(' ITSM service not configured.')
+    await context.sendActivity(`${ICONS.error} ITSM service not configured.`)
     return
   }
 
   if (!issueKey || !formTemplateId) {
-    await context.sendActivity(
-      '❌ Usage: <code>itsm attach &lt;issueKey&gt; &lt;formTemplateId&gt;</code><br/>' +
-      'Example: <code>itsm attach I0-5 ff635c24-e52d-46f3-bdca-22b62248bc4c</code>'
-    )
+    const usage = createMessage()
+      .addLine(`${ICONS.error} Usage: ${code('itsm attach <issueKey> <formTemplateId>')}`)
+      .addNote('Example: itsm attach I0-5 ff635c24-e52d-46f3-bdca-22b62248bc4c')
+      .build()
+    await context.sendActivity(usage)
     return
   }
 
   try {
     await sendTyping(context)
 
-    let msg = `<b>📋 Testing Form Attachment</b><br/>━━━━━━━━━━━━━━━━━━━━<br/><br/>`
-    msg += `<b>Issue:</b> ${issueKey}<br/>`
-    msg += `<b>Form Template ID:</b> ${formTemplateId}<br/><br/>`
+    const msg = createMessage()
+      .addHeader('📋 Testing Form Attachment')
+      .addDivider()
+      .addBreak()
+      .addLine(`${bold('Issue:')} ${issueKey}`)
+      .addLine(`${bold('Form Template ID:')} ${formTemplateId}`)
+      .addBreak()
+      .addLine(`${bold('Step 1:')} Attaching form...`)
 
-    msg += `<b>Step 1:</b> Attaching form...<br/>`
     try {
       const attachedForm = await bot.itsmService.attachFormToIssue(issueKey, formTemplateId)
-      msg += ` Form attached!<br/>`
-      msg += `Form ID: ${attachedForm.id}<br/>`
-      msg += `Form Name: ${attachedForm.name || 'N/A'}<br/>`
+      msg.addLine(`${ICONS.success} Form attached!`)
+        .addLine(`Form ID: ${attachedForm.id}`)
+        .addLine(`Form Name: ${attachedForm.name || 'N/A'}`)
     } catch (error) {
-      msg += ` Failed: ${error.message}<br/>`
+      msg.addLine(`${ICONS.error} Failed: ${error.message}`)
     }
 
-    await context.sendActivity(msg)
+    await context.sendActivity(msg.build())
   } catch (error) {
     console.error('Test attach error:', error)
-    await context.sendActivity(` Error: ${error.message}`)
+    await context.sendActivity(`${ICONS.error} Error: ${error.message}`)
   }
 }
 
