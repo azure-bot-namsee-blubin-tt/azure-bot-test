@@ -26,7 +26,11 @@ export function createServer(bot) {
 
   adapter.onTurnError = async (context, error) => {
     console.error('Bot error:', error)
-    await context.sendActivity('Sorry, something went wrong.')
+    try {
+      await context.sendActivity('Sorry, something went wrong.')
+    } catch (sendError) {
+      console.error('Failed to send error message:', sendError)
+    }
   }
 
   app.post('/api/messages', async (req, res) => {
@@ -37,9 +41,17 @@ export function createServer(bot) {
     try {
       await adapter.process(req, res, (context) => bot.run(context))
     } catch (error) {
-      console.error('Error processing message:', error)
-      console.error('Error details:', JSON.stringify(error, null, 2))
-      res.status(500).json({ error: error.message })
+      console.error('=== Error Details ===')
+      console.error('Error type:', typeof error)
+      console.error('Error constructor:', error?.constructor?.name)
+      console.error('Error message:', error?.message)
+      console.error('Error stack:', error?.stack)
+      console.error('Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error || {}), 2))
+      
+      const errorMessage = error?.message || (error ? String(error) : 'Unknown error')
+      if (!res.headersSent) {
+        res.status(500).json({ error: errorMessage })
+      }
     }
   })
 

@@ -17,6 +17,16 @@
   "type": "module",
   "dependencies": {
     "@microsoft/agents-hosting-express": "^1.2.2",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/api-logs": "^0.211.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.69.0",
+    "@opentelemetry/exporter-logs-otlp-http": "^0.211.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "^0.211.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.211.0",
+    "@opentelemetry/resources": "^2.5.0",
+    "@opentelemetry/sdk-logs": "^0.211.0",
+    "@opentelemetry/sdk-metrics": "^2.5.0",
+    "@opentelemetry/sdk-node": "^0.211.0",
     "dotenv": "^17.2.3",
     "express": "^5.2.1"
   },
