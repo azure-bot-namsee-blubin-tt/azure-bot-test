@@ -14,6 +14,8 @@ import sdkLogs from '@opentelemetry/sdk-logs'
 import resourcesPkg from '@opentelemetry/resources'
 import api from '@opentelemetry/api'
 import apiLogs from '@opentelemetry/api-logs'
+import { PinoInstrumentation } from '@opentelemetry/instrumentation-pino'
+import pino from 'pino'
 
 // Extract named exports from CommonJS modules
 const { NodeSDK } = sdkNode
@@ -88,6 +90,12 @@ const sdk = new NodeSDK({
       // Configure HTTP instrumentation
       '@opentelemetry/instrumentation-http': {
         ignoreIncomingPaths: ['/health'],
+      },
+    }),
+    // Pino instrumentation for structured logging
+    new PinoInstrumentation({
+      logHook: (span, record) => {
+        record['resource.service.name'] = config.serviceName
       },
     }),
   ],
@@ -363,6 +371,50 @@ export const itsmMetrics = {
     description: 'Number of ITSM forms submitted',
     unit: '1',
   }),
+}
+
+// ============================================================================
+// Pino Logger - Use this for structured logging throughout the app
+// ============================================================================
+
+/**
+ * Create a Pino logger that sends logs to OpenTelemetry
+ * This is the recommended way to log in the application
+ */
+const pinoLogger = pino({
+  level: process.env.LOG_LEVEL || 'info',
+  formatters: {
+    level: (label) => ({ level: label }),
+  },
+  base: {
+    service: config.serviceName,
+    version: config.serviceVersion,
+    env: config.environment,
+  },
+})
+
+/**
+ * Application logger - use this throughout your code
+ * Logs are automatically sent to Loki via OpenTelemetry
+ * 
+ * @example
+ * import { logger } from './telemetry/index.mjs'
+ * logger.info('User logged in', { userId: '123' })
+ * logger.error({ err: error, userId: '123' }, 'Failed to process request')
+ */
+export const logger = pinoLogger
+
+/**
+ * Create a child logger with additional context
+ * @param {Object} bindings - Additional context to include in all logs
+ * @returns {import('pino').Logger}
+ * 
+ * @example
+ * const reqLogger = createLogger({ requestId: '123', userId: 'abc' })
+ * reqLogger.info('Processing request')
+ */
+export function createLogger(bindings) {
+  return pinoLogger.child(bindings)
 }
 
 // Export utilities

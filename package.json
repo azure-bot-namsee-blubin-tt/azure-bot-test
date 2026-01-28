@@ -23,12 +23,14 @@
     "@opentelemetry/exporter-logs-otlp-http": "^0.211.0",
     "@opentelemetry/exporter-metrics-otlp-http": "^0.211.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.211.0",
+    "@opentelemetry/instrumentation-pino": "^0.57.0",
     "@opentelemetry/resources": "^2.5.0",
     "@opentelemetry/sdk-logs": "^0.211.0",
     "@opentelemetry/sdk-metrics": "^2.5.0",
     "@opentelemetry/sdk-node": "^0.211.0",
     "dotenv": "^17.2.3",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "pino": "^10.3.0"
   },
   "devDependencies": {
     "@microsoft/teams-app-test-tool": "^0.2.20",
