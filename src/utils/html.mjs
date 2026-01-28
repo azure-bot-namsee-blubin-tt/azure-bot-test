@@ -21,8 +21,7 @@ export const ICONS = {
   required: '<span style="color: #FF5252; font-weight: bold; margin-left: 2px;">⋆</span>',
 }
 
-export const DIVIDER = '━━━━━━━━━━━━━━━━━━━━'
-export const HR = "<hr style='border: 0; border-top: 1px solid #000000;'>"
+export const DIVIDER = "<hr style='border: 0; border-top: 1px solid #000000;'>"
 
 // ============================================
 // Basic Components
@@ -73,7 +72,7 @@ export function progress(current, total) {
  * @returns {string} HTML divider with line break
  */
 export function divider() {
-  return [DIVIDER, '<br/>'].join('')
+  return [DIVIDER].join('')
 }
 
 /**
@@ -411,11 +410,6 @@ export class MessageBuilder {
 
   addBreak(count = 1) {
     this.parts.push(br(count))
-    return this
-  }
-
-  addHr() {
-    this.parts.push(HR)
     return this
   }
 

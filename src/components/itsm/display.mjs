@@ -33,7 +33,9 @@ export async function showServiceDesks(context, state) {
     .addBreak()
     .add(selectionList(state.serviceDesks, d => `${d.projectName} (${d.projectKey})`))
     .addBreak(2)
-    .addNote(`Type number to select. ${code('cancel')} to abort.`)
+    .addDivider()
+    .addNote(`Type number to select.`)
+    .addNote(`Type ${code('cancel')} to cancel request.`)
     .build()
 
   await context.sendActivity(msg)
@@ -57,7 +59,10 @@ export async function showPortalGroups(context, state) {
     .addBreak()
     .add(selectionList(state.portalGroups, g => g.name))
     .addBreak(2)
-    .addNote(`Type number to select. ${code('back')} to go back.`)
+    .addDivider()
+    .addNote(`Type number to select.`)
+    .addNote(`Type ${code('back')} to go back.`)
+    .addNote(`Type ${code('cancel')} to cancel request.`)
     .build()
 
   await context.sendActivity(msg)
@@ -108,9 +113,12 @@ export async function showRequestTypes(context, state, itsmService) {
     }
   }
 
-  msg.addNote(`Type number to select. ${code('back')} to go back.`)
-    .add(`${ICONS.required} = Required field`)
-    
+  msg.addDivider()
+    .addNote(`${ICONS.required} = Required field`)
+    .addNote(`Type number to select.`)
+    .addNote(`Type ${code('back')} to go back.`)
+    .addNote(`Type ${code('cancel')} to cancel request.`)
+    .build()
 
   await context.sendActivity(msg.build())
 }
@@ -224,13 +232,13 @@ export async function showFormOverview(context, state, itsmService) {
   const tableFieldNames = ['Email', 'AD Group']
   const regularFormFields = []
   const tableFormFields = {}
-  
+
   fc.fields.forEach((f, i) => {
     // Check if field name starts with Email or AD Group (for row-based fields)
-    const isTableField = tableFieldNames.some(name => 
+    const isTableField = tableFieldNames.some(name =>
       f.name.startsWith(name) || f.name.match(new RegExp(`^${name}\\s*\\(Row\\s*\\d+\\)$`, 'i'))
     )
-    
+
     if (isTableField) {
       const match = f.name.match(/^(.+?)\s*\(Row\s*(\d+)\)$/i)
       if (match) {
@@ -261,8 +269,7 @@ export async function showFormOverview(context, state, itsmService) {
   // Display table fields if any
   if (Object.keys(tableFormFields).length > 0) {
     msg.addBreak()
-    msg.addLine(bold('Table Fields:'))
-    
+
     const columnNames = Object.keys(tableFormFields)
     const rowNumbers = new Set()
     for (const column of columnNames) {
@@ -275,10 +282,9 @@ export async function showFormOverview(context, state, itsmService) {
     // Build table HTML
     const tableParts = []
     tableParts.push('<table border="1" cellpadding="5" cellspacing="0">')
-    
+
     // Header row
     tableParts.push('<tr>')
-    tableParts.push('<th>Row</th>')
     for (const col of columnNames) {
       const { field } = Object.values(tableFormFields[col])[0]
       const reqMark = field?.required ? ICONS.required : ''
@@ -291,7 +297,6 @@ export async function showFormOverview(context, state, itsmService) {
     // Data rows
     for (const rowNum of sortedRows) {
       tableParts.push('<tr>')
-      tableParts.push(`<td>${rowNum}</td>`)
       for (const col of columnNames) {
         const entry = tableFormFields[col][rowNum]
         if (entry) {
@@ -309,7 +314,70 @@ export async function showFormOverview(context, state, itsmService) {
 
   msg.addBreak()
     .addDivider()
-    .add(`${ICONS.required} = Required field`)
+    .addNote(`${ICONS.required} = Required field`)
+
+  await context.sendActivity(msg.build())
+}
+
+// ============================================
+// Current Request State Display
+// ============================================
+
+/**
+ * Display current request state showing all collected values so far
+ * @param {object} context - Turn context from bot framework
+ * @param {object} state - Conversation state with all selections and field values
+ * @param {object} itsmService - ITSM service instance
+ * @returns {Promise<void>}
+ */
+export async function showCurrentRequestState(context, state, itsmService) {
+  const { selectedServiceDesk, selectedPortalGroup, selectedRequestType, fieldCollection } = state
+  const fc = fieldCollection
+
+  const msg = createMessage()
+    .addLine(bold('Current Request'))
+    .addDivider()
+    .addLine(`${bold('Service Desk:')} ${selectedServiceDesk.projectName}`)
+    .addLine(`${bold('Category:')} ${selectedPortalGroup.name}`)
+    .addLine(`${bold('Request Type:')} ${selectedRequestType.name}`)
+
+  if (fc?.fields.length > 0) {
+    msg.addBreak()
+    // Separate regular fields from table (row) fields
+    const { regularFields, tableFields } = separateFields(fc.fields)
+
+    // Display regular fields that have been filled
+    for (let i = 0; i < regularFields.length; i++) {
+      const field = regularFields[i]
+      // Only show fields that have been processed (index < currentFieldIndex)
+      const fieldIndex = fc.fields.indexOf(field)
+      if (fieldIndex < fc.currentFieldIndex) {
+        const { display } = getFieldDisplayValue(field, fc, itsmService)
+        msg.addLine(`${bold(field.name)}: ${display}`)
+      }
+    }
+
+    // Display table fields if any have been filled
+    const filledTableFields = {}
+    for (const col in tableFields) {
+      filledTableFields[col] = {}
+      for (const rowNum in tableFields[col]) {
+        const field = tableFields[col][rowNum]
+        const fieldIndex = fc.fields.indexOf(field)
+        if (fieldIndex < fc.currentFieldIndex) {
+          filledTableFields[col][rowNum] = field
+        }
+      }
+      if (Object.keys(filledTableFields[col]).length === 0) {
+        delete filledTableFields[col]
+      }
+    }
+
+    if (Object.keys(filledTableFields).length > 0) {
+      msg.addBreak()
+      msg.add(formatTableFields(filledTableFields, fc, itsmService))
+    }
+  }
 
   await context.sendActivity(msg.build())
 }
@@ -339,7 +407,6 @@ export async function showField(context, state, itsmService) {
   // Field name with required indicator
   if (field.required) {
     msg.add(`${bold(field.name)} ${ICONS.required}`)
-      .addLine(italic('<span style="color:red">This field is required</span>'))
   } else {
     msg.addLine(`${bold(field.name)} ${italic('(Optional)')}`)
   }
@@ -356,11 +423,12 @@ export async function showField(context, state, itsmService) {
   // Footer commands
   msg.addBreak(2)
     .addDivider()
-
+    .addLine(`${ICONS.required} = Required field`)
   if (!field.required) {
     msg.addLine(`${code('skip')} - Skip this field`)
   }
-  msg.add(`${code('back')} - Previous field`)
+  msg.addNote(`Type ${code('back')} to go back.`)
+    .addNote(`Type ${code('cancel')} to cancel request.`)
 
   await context.sendActivity(msg.build())
 }
@@ -447,13 +515,11 @@ export async function showConfirmation(context, state, itsmService) {
       msg.addBreak()
       msg.add(formatTableFields(tableFields, fieldCollection, itsmService))
     }
-
-    msg.addBreak()
-      .addNote(`${ICONS.required} = Required field`)
   }
 
   msg.addBreak(2)
     .addDivider()
+    .addNote(`${ICONS.required} = Required field`)
     .addCommands([
       ['yes', 'Submit request'],
       ['no', 'Cancel'],
@@ -498,7 +564,7 @@ function separateFields(fields) {
  */
 function formatTableFields(tableFields, fieldCollection, itsmService) {
   const columnNames = Object.keys(tableFields)
-  
+
   // Find all row numbers
   const rowNumbers = new Set()
   for (const column of columnNames) {
@@ -511,10 +577,9 @@ function formatTableFields(tableFields, fieldCollection, itsmService) {
   // Build table HTML
   const parts = []
   parts.push('<table border="1" cellpadding="5" cellspacing="0">')
-  
+
   // Header row
   parts.push('<tr>')
-  parts.push('<th>Row</th>')
   for (const col of columnNames) {
     const field = Object.values(tableFields[col])[0]
     const reqMark = field?.required ? ICONS.required : ''
@@ -525,7 +590,6 @@ function formatTableFields(tableFields, fieldCollection, itsmService) {
   // Data rows
   for (const rowNum of sortedRows) {
     parts.push('<tr>')
-    parts.push(`<td>${rowNum}</td>`)
     for (const col of columnNames) {
       const field = tableFields[col][rowNum]
       if (field) {

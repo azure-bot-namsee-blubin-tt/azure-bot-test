@@ -3,7 +3,7 @@
  * Handles field input validation and processing
  */
 import { setState } from '../../state/conversation.mjs'
-import { showField, showConfirmation, sendTyping } from './display.mjs'
+import { showField, showConfirmation, sendTyping, showCurrentRequestState } from './display.mjs'
 
 /**
  * Handle user input for current field in the collection
@@ -196,8 +196,12 @@ export async function moveToNextField(context, state, conversationId, itsmServic
   const fc = state.fieldCollection
 
   fc.currentFieldIndex++
+  setState(conversationId, state)
+
+  // Show current request state after entering any field
+  await showCurrentRequestState(context, state, itsmService)
+
   if (fc.currentFieldIndex < fc.fields.length) {
-    setState(conversationId, state)
     await showField(context, state, itsmService)
   } else {
     state.step = 'confirm'
