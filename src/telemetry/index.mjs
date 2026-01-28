@@ -93,26 +93,74 @@ const sdk = new NodeSDK({
   ],
 })
 
+// ============================================================================
+// Intercept console.log/error/warn to send logs via OpenTelemetry
+// ============================================================================
+const originalConsole = {
+  log: console.log.bind(console),
+  info: console.info.bind(console),
+  warn: console.warn.bind(console),
+  error: console.error.bind(console),
+  debug: console.debug.bind(console),
+}
+
+function createLogInterceptor(level, severityNum, originalFn) {
+  return function (...args) {
+    // Call original console method
+    originalFn(...args)
+
+    // Skip if OTel is disabled
+    if (!config.enabled) return
+
+    // Send to OpenTelemetry
+    try {
+      const logger = logs.getLogger(config.serviceName, config.serviceVersion)
+      const message = args
+        .map((arg) => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
+        .join(' ')
+
+      logger.emit({
+        severityNumber: severityNum,
+        severityText: level,
+        body: message,
+        attributes: {
+          'log.source': 'console',
+        },
+      })
+    } catch {
+      // Ignore logging errors to prevent infinite loops
+    }
+  }
+}
+
+// Replace console methods with interceptors
+console.log = createLogInterceptor('INFO', SeverityNumber.INFO, originalConsole.log)
+console.info = createLogInterceptor('INFO', SeverityNumber.INFO, originalConsole.info)
+console.warn = createLogInterceptor('WARN', SeverityNumber.WARN, originalConsole.warn)
+console.error = createLogInterceptor('ERROR', SeverityNumber.ERROR, originalConsole.error)
+console.debug = createLogInterceptor('DEBUG', SeverityNumber.DEBUG, originalConsole.debug)
+
 // Start the SDK
 if (config.enabled) {
   try {
     sdk.start()
-    console.log(`[OpenTelemetry] Initialized for ${config.serviceName} (${config.environment})`)
-    console.log(`[OpenTelemetry] Exporting to ${config.otlpEndpoint}`)
+    originalConsole.log(`[OpenTelemetry] Initialized for ${config.serviceName} (${config.environment})`)
+    originalConsole.log(`[OpenTelemetry] Exporting to ${config.otlpEndpoint}`)
+    originalConsole.log(`[OpenTelemetry] Console logs will be exported to Loki`)
   } catch (error) {
-    console.error('[OpenTelemetry] Failed to initialize:', error)
+    originalConsole.error('[OpenTelemetry] Failed to initialize:', error)
   }
 } else {
-  console.log('[OpenTelemetry] Disabled via OTEL_ENABLED=false')
+  originalConsole.log('[OpenTelemetry] Disabled via OTEL_ENABLED=false')
 }
 
 // Graceful shutdown
 const shutdown = async () => {
   try {
     await sdk.shutdown()
-    console.log('[OpenTelemetry] SDK shut down successfully')
+    originalConsole.log('[OpenTelemetry] SDK shut down successfully')
   } catch (error) {
-    console.error('[OpenTelemetry] Error shutting down SDK:', error)
+    originalConsole.error('[OpenTelemetry] Error shutting down SDK:', error)
   }
 }
 
