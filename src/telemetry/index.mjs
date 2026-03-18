@@ -6,9 +6,9 @@
  */
 import sdkNode from '@opentelemetry/sdk-node'
 import autoInstrumentations from '@opentelemetry/auto-instrumentations-node'
-import traceExporterPkg from '@opentelemetry/exporter-trace-otlp-http'
-import metricExporterPkg from '@opentelemetry/exporter-metrics-otlp-http'
-import logExporterPkg from '@opentelemetry/exporter-logs-otlp-http'
+import traceExporterPkg from '@opentelemetry/exporter-trace-otlp-grpc'
+import metricExporterPkg from '@opentelemetry/exporter-metrics-otlp-grpc'
+import logExporterPkg from '@opentelemetry/exporter-logs-otlp-grpc'
 import sdkMetrics from '@opentelemetry/sdk-metrics'
 import sdkLogs from '@opentelemetry/sdk-logs'
 import resourcesPkg from '@opentelemetry/resources'
@@ -42,7 +42,7 @@ const config = {
   serviceName: process.env.OTEL_SERVICE_NAME || 'azure-bot',
   serviceVersion: process.env.OTEL_SERVICE_VERSION || '1.0.0',
   environment: process.env.OTEL_ENVIRONMENT || 'development',
-  otlpEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318',
+  otlpEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4317',
   enabled: process.env.OTEL_ENABLED !== 'false',
   consoleExport: process.env.OTEL_CONSOLE_EXPORT === 'true',
   metricExportInterval: parseInt(process.env.OTEL_METRIC_EXPORT_INTERVAL || '60000', 10),
@@ -55,17 +55,17 @@ const resource = resourceFromAttributes({
   [ATTR_DEPLOYMENT_ENVIRONMENT]: config.environment,
 })
 
-// Initialize exporters
+// Initialize exporters (gRPC uses base endpoint, no path suffixes needed)
 const traceExporter = new OTLPTraceExporter({
-  url: `${config.otlpEndpoint}/v1/traces`,
+  url: config.otlpEndpoint,
 })
 
 const metricExporter = new OTLPMetricExporter({
-  url: `${config.otlpEndpoint}/v1/metrics`,
+  url: config.otlpEndpoint,
 })
 
 const logExporter = new OTLPLogExporter({
-  url: `${config.otlpEndpoint}/v1/logs`,
+  url: config.otlpEndpoint,
 })
 
 // Metric reader with periodic export
@@ -131,6 +131,7 @@ function createLogInterceptor(level, severityNum, originalFn) {
         severityNumber: severityNum,
         severityText: level,
         body: message,
+        context: context.active(),
         attributes: {
           'log.source': 'console',
         },
@@ -278,6 +279,7 @@ export function log(message, level = 'INFO', attributes = {}) {
     severityNumber: severityMap[level] || SeverityNumber.INFO,
     severityText: level,
     body: message,
+    context: context.active(),
     attributes,
   })
 }
